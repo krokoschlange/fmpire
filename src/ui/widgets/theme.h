@@ -7,17 +7,18 @@ namespace fmpire
 {
 
 
-class FMpireTheme
+class Theme
 {
 public:
-	FMpireTheme(Color bg, Color fg, Color hl, float thin, float thick) :
-			background(bg),
-			foreground(fg),
-			highlight(hl),
-			line_thin(thin),
-			line_thick(thick)
+	Theme(Color bg, Color fg, Color hl, float thin, float thick) :
+		background(bg),
+		foreground(fg),
+		highlight(hl),
+		line_thin(thin),
+		line_thick(thick)
 	{
 	}
+
 	Color background;
 	Color foreground;
 	Color highlight;
@@ -25,12 +26,12 @@ public:
 	float line_thick;
 };
 
-class FMpireThemeCollection
+class ThemeCollection
 {
 public:
-	static FMpireTheme themes[5];
+	static Theme themes[5];
 };
 
-}
+} // namespace fmpire
 
 #endif // FMPIRE_THEME_H_INCLUDED

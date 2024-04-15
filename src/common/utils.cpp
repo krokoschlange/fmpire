@@ -1,40 +1,54 @@
 #include "utils.h"
 
+#include <charconv>
+
 namespace fmpire
 {
 
-float lerp(float a, float b, float t)
+static const char* base32_code = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+								 "012345";
+
+static int base32_decode[256] = {
+	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0,
+	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0,
+	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  26, 27, 28, 29, 30, 31, 0, 0, 0,
+	0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  2,  3,  4,  5,  6,  7,  8, 9, 10,
+	11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 0,  0, 0, 0,
+	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0,
+	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0,
+	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0,
+	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0,
+	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0,
+	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0,
+	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0,
+	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0,
+	0,  0,  0,  0,  0,  0,  0,  0,  0};
+
+std::string encode_base32(const uint8_t* const data, const size_t size)
 {
-	return a + (b - a) * t;
+	std::string encoded(size * 2, '*');
+	for (size_t byte = 0; byte < size; byte++)
+	{
+		encoded[byte * 2] = base32_code[data[byte] & 0xf];
+		encoded[byte * 2 + 1] = base32_code[data[byte] >> 4];
+	}
+	return encoded;
 }
 
-double lerp(double a, double b, double t)
+size_t decode_base32(const std::string& encoded,
+					 const size_t offset,
+					 uint8_t* decoded,
+					 const size_t decoded_size)
 {
-	return a + (b - a) * t;
+	size_t byte = 0;
+	for (; byte < decoded_size && byte * 2 + 1 + offset < encoded.size();
+		 byte++)
+	{
+		decoded[byte] =
+			base32_decode[(uint8_t) encoded[byte * 2 + offset]]
+			| (base32_decode[(uint8_t) encoded[byte * 2 + 1 + offset]] << 4);
+	}
+	return byte * 2;
 }
 
-void draw_rounded_box(const GraphicsContext& context, float top, float left, float width, float height, float radius, float line_width)
-{
-	top += line_width / 2;
-	left += line_width / 2;
-	width -= line_width;
-	height -= line_width;
-	Arc<float> arc(left + radius, top + radius, radius, 90, 180);
-	arc.draw(context, line_width);
-	Line<float> line(left + radius, top, left + width - radius, top);
-	line.draw(context, line_width);
-	arc = Arc<float>(left + width - radius, top + radius, radius, 180, 270);
-	arc.draw(context, line_width);
-	line = Line<float>(left + width, top + radius, left + width, top + height - radius);
-	line.draw(context, line_width);
-	arc = Arc<float>(left + width - radius, top + height - radius, radius, 270, 360);
-	arc.draw(context, line_width);
-	line = Line<float>(left + width - radius, top + height, left + radius, top + height);
-	line.draw(context, line_width);
-	arc = Arc<float>(left + radius, top + height - radius, radius, 0, 90);
-	arc.draw(context, line_width);
-	line = Line<float>(left, top + height - radius, left, top + radius);
-	line.draw(context, line_width);
-}
-
-}
+} // namespace fmpire

@@ -61,43 +61,44 @@ String FMpire::getState(const char* key) const
 void FMpire::setState(const char* key, const char* value)
 {
 	d_stdout("state set (dsp) %s %s", key, value);
+
 	if (std::string(key) == "vol")
 	{
 		volume = std::stof(value);
 	}
 }
 
-void FMpire::run(const float** inputs, float** outputs, uint32_t frames, const MidiEvent* midiEvents, uint32_t midiEventCount)
+void FMpire::run(const float** inputs,
+				 float** outputs,
+				 uint32_t frames,
+				 const MidiEvent* midiEvents,
+				 uint32_t midiEventCount)
 {
 	float* const left = outputs[0];
 	float* const right = outputs[1];
-	
+
 	if (sync_time)
 	{
 		const TimePosition& timepos = getTimePosition();
 		self_frame = timepos.frame;
 	}
-	
+
 	double samplerate = getSampleRate();
-	
-	
-	float freq = 440;
+
+
+	float freq = volume * 880;
+
 	for (size_t frame = 0; frame < frames; frame++)
 	{
 		double time_sec = (double) self_frame / samplerate;
-		left[frame] = sinf(time_sec * M_PI * 2.f * freq) * volume;
+		left[frame] = sinf(time_sec * M_PI * 2.f * freq) * 0.4;
 		right[frame] = left[frame];
-		
+
 		self_frame += 1;
 	}
 }
 
 
+} // namespace fmpire
 
 
-
-
-
-
-
-}

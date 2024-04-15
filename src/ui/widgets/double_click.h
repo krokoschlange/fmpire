@@ -10,9 +10,9 @@ class DoubleClick
 {
 public:
 	static void set_threshold(uint time);
-	
+
 	static bool is_double_click(uint button, uint time);
-	
+
 private:
 	static uint current_button;
 	static uint current_time;
@@ -22,6 +22,6 @@ private:
 	static uint difference_threshold;
 };
 
-}
+} // namespace fmpire
 
 #endif // DOUBLE_CLICK_H_INCLUDED

@@ -2,23 +2,23 @@
 #define FMPIRE_BORDER_H_INCLUDED
 
 
-#include "SubWidget.hpp"
 #include "fmpire_widget.h"
+#include "SubWidget.hpp"
 
 namespace fmpire
 {
 
-class FMpireBorder : public SubWidget, public FMpireWidget
+class Border : public SubWidget, public FMpireWidget
 {
 public:
-	explicit FMpireBorder(Widget* parent);
-	virtual ~FMpireBorder();
-	
+	explicit Border(Widget* parent);
+	virtual ~Border();
+
 protected:
 	void onDisplay() override;
 	void onPositionChanged(const PositionChangedEvent& event) override;
 	void onResize(const ResizeEvent& event) override;
 };
-}
+} // namespace fmpire
 
 #endif // FMPIRE_BORDER_H_INCLUDED

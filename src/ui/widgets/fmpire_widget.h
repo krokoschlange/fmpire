@@ -1,7 +1,7 @@
 #ifndef FMPIRE_WIDGET_H_INCLUDED
 #define FMPIRE_WIDGET_H_INCLUDED
 
-#include "fmpire_theme.h"
+#include "theme.h"
 
 namespace fmpire
 {
@@ -10,11 +10,11 @@ class FMpireWidget
 {
 public:
 	FMpireWidget();
-	
+
 protected:
-	FMpireTheme* theme;
+	Theme* theme;
 };
 
-}
+} // namespace fmpire
 
 #endif // FMPIRE_WIDGET_H_INCLUDED

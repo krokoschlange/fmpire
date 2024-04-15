@@ -1,20 +1,20 @@
-#include "fmpire_border.h"
+#include "border.h"
 
-#include "utils.h"
+#include "draw_operations.h"
 
 namespace fmpire
 {
 
-FMpireBorder::FMpireBorder(Widget* parent) :
+Border::Border(Widget* parent) :
 	SubWidget(parent)
 {
 }
 
-FMpireBorder::~FMpireBorder()
+Border::~Border()
 {
 }
 
-void FMpireBorder::onDisplay()
+void Border::onDisplay()
 {
 	const GraphicsContext& context = getGraphicsContext();
 	theme->highlight.setFor(context);
@@ -22,14 +22,14 @@ void FMpireBorder::onDisplay()
 	draw_rounded_box(context, 0, 0, getWidth(), getHeight(), 10, line_width);
 }
 
-void FMpireBorder::onPositionChanged(const PositionChangedEvent& event)
+void Border::onPositionChanged(const PositionChangedEvent& event)
 {
 	getChildren().front()->setAbsolutePos(event.pos);
 }
 
-void FMpireBorder::onResize(const ResizeEvent& event)
+void Border::onResize(const ResizeEvent& event)
 {
 	getChildren().front()->setSize(event.size);
 }
 
-}
+} // namespace fmpire
