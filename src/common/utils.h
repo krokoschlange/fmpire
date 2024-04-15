@@ -2,6 +2,7 @@
 #define UTILS_H_INCLUDED
 
 #include <cmath>
+#include <cstdint>
 #include <string>
 
 namespace fmpire
