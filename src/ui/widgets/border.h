@@ -3,12 +3,11 @@
 
 
 #include "fmpire_widget.h"
-#include "SubWidget.hpp"
 
 namespace fmpire
 {
 
-class Border : public SubWidget, public FMpireWidget
+class Border : public FMpireWidget
 {
 public:
 	explicit Border(Widget* parent);

@@ -7,15 +7,17 @@
 
 #include "Color.hpp"
 #include "double_click.h"
+#include "draw_operations.h"
 
 namespace fmpire
 {
 
 Knob::Knob(Widget* parentWidget) :
-	SubWidget(parentWidget),
+	FMpireWidget(parentWidget),
 	value(0.5),
 	default_value(0),
-	stored_value(0),
+	stored_value(0.5),
+	label_scale(0.2),
 	drag_speed(0.005),
 	dragging(false),
 	callback(nullptr)
@@ -36,6 +38,34 @@ void Knob::set_value(float new_value, bool emit_callback)
 	}
 
 	repaint();
+}
+
+void Knob::set_default_value(const float val)
+{
+	default_value = val;
+}
+
+void Knob::set_label(const std::string& text)
+{
+	label = text;
+	repaint();
+}
+
+void Knob::set_label_scale(const float scale)
+{
+	label_scale = scale;
+	repaint();
+}
+
+void Knob::set_tooltip(const std::string& txt,
+					   const float offset,
+					   const float mult,
+					   const std::string unit)
+{
+	tooltip = txt;
+	tooltip_value_offset = offset;
+	tooltip_value_mult = mult;
+	tooltip_unit = unit;
 }
 
 void Knob::set_callback(Callback* cb)
@@ -65,13 +95,16 @@ bool Knob::onMouse(const MouseEvent& event)
 			{
 				callback->drag_ended(this);
 			}
-
 			return true;
 		}
 
 		dragging = true;
 		last_mouse_pos = event.pos;
 
+		show_tooltip(create_tooltip_string(),
+					 event.absolutePos.getX(),
+					 event.absolutePos.getY(),
+					 true);
 		if (callback)
 		{
 			callback->drag_started(this);
@@ -81,6 +114,7 @@ bool Knob::onMouse(const MouseEvent& event)
 	{
 		dragging = false;
 
+		unpin_tooltip();
 		if (callback)
 		{
 			callback->drag_ended(this);
@@ -94,10 +128,18 @@ bool Knob::onMouse(const MouseEvent& event)
 
 bool Knob::onMotion(const MotionEvent& event)
 {
+	if (contains(event.pos))
+	{
+		show_tooltip(create_tooltip_string(),
+					 event.absolutePos.getX(),
+					 event.absolutePos.getY(),
+					 dragging);
+	}
 	if (!dragging)
 	{
 		return false;
 	}
+	update_tooltip(create_tooltip_string());
 
 	float diff = last_mouse_pos.getY() - event.pos.getY();
 
@@ -126,7 +168,22 @@ void Knob::onDisplay()
 					  lerp(45, 315, value));
 	theme->highlight.setFor(context);
 	slider.draw(context, radius * 0.4);
+
+	Color(255, 255, 255).setFor(context);
+	draw_text(context,
+			  label.c_str(),
+			  theme->font.c_str(),
+			  getHeight() * label_scale,
+			  Anchor::CENTER,
+			  getWidth() / 2,
+			  getHeight() * (1.0 - label_scale * 0.5));
 }
 
+std::string Knob::create_tooltip_string()
+{
+	return tooltip + ": "
+		 + std::to_string(value * tooltip_value_mult + tooltip_value_offset)
+		 + " " + tooltip_unit;
+}
 
 } // namespace fmpire

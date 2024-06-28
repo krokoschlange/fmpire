@@ -4,7 +4,7 @@ namespace fmpire
 {
 
 RelativeContainer::RelativeContainer(Widget* parent) :
-	SubWidget(parent)
+	FMpireWidget(parent)
 {
 }
 
@@ -45,12 +45,13 @@ void RelativeContainer::onResize(const ResizeEvent& event)
 void RelativeContainer::remove_invalid_children()
 {
 	std::list<SubWidget*> children = getChildren();
-	
-	for (size_t relative_item = 0; relative_item < relative_children.size(); relative_item++)
+
+	for (size_t relative_item = 0; relative_item < relative_children.size();
+		 relative_item++)
 	{
 		RelativeChild& relative_child = relative_children[relative_item];
 		bool is_child = false;
-		
+
 		for (SubWidget* child : children)
 		{
 			if (child == relative_child.widget)
@@ -59,7 +60,7 @@ void RelativeContainer::remove_invalid_children()
 				break;
 			}
 		}
-		
+
 		if (!is_child)
 		{
 			relative_children.erase(relative_children.begin() + relative_item);

@@ -2,6 +2,7 @@
 
 #include "utils.h"
 
+#include "exprtk.hpp"
 #include "FftRealPair.hpp"
 
 #define SAMPLES_STRING  std::string("SAMPLES")
@@ -11,7 +12,45 @@
 namespace fmpire
 {
 
-WaveformPart::WaveformPart() :
+std::shared_ptr<WaveformPart> WaveformPart::create(Type type)
+{
+	switch (type)
+	{
+	case Type::SAMPLES:
+		return std::make_shared<SamplesWaveformPart>();
+	case Type::FUNCTION:
+		return std::make_shared<FunctionWaveformPart>();
+	case Type::HARMONIC:
+		return std::make_shared<HarmonicsWaveformPart>();
+	}
+	return std::shared_ptr<WaveformPart>();
+}
+
+std::shared_ptr<WaveformPart> WaveformPart::create(std::string_view& data)
+{
+	std::shared_ptr<WaveformPart> part;
+	if (data.starts_with(SAMPLES_STRING))
+	{
+		part = create(Type::SAMPLES);
+	}
+	else if (data.starts_with(FUNCTION_STRING))
+	{
+		part = create(Type::FUNCTION);
+	}
+	else if (data.starts_with(HARMONIC_STRING))
+	{
+		part = create(Type::HARMONIC);
+	}
+	else
+	{
+		return part;
+	}
+	part->decode(data);
+	return part;
+}
+
+WaveformPart::WaveformPart(const Type part_type) :
+	type(part_type),
 	waveform_size(0),
 	start(0),
 	end(1),
@@ -23,9 +62,9 @@ WaveformPart::~WaveformPart() noexcept
 {
 }
 
-bool WaveformPart::contains(size_t position) const
+WaveformPart::Type WaveformPart::get_type() const
 {
-	return (position >= start && position < end);
+	return type;
 }
 
 std::string WaveformPart::encode_generic_part_parameters() const
@@ -41,31 +80,20 @@ std::string WaveformPart::encode_generic_part_parameters() const
 	return str;
 }
 
-size_t WaveformPart::decode_generic_part_parameters(const std::string& data,
-													const size_t byte_offset)
+void WaveformPart::decode_generic_part_parameters(std::string_view& data)
 {
-	size_t offset = byte_offset;
-	offset += decode_base32(data,
-							offset,
-							reinterpret_cast<uint8_t*>(&waveform_size),
-							sizeof(waveform_size));
-	offset += decode_base32(data,
-							offset,
-							reinterpret_cast<uint8_t*>(&start),
-							sizeof(start));
-	offset += decode_base32(data,
-							offset,
-							reinterpret_cast<uint8_t*>(&end),
-							sizeof(end));
-	offset += decode_base32(data,
-							offset,
-							reinterpret_cast<uint8_t*>(&waveform_index),
-							sizeof(waveform_index));
-	return offset;
+	decode_base32(data,
+				  reinterpret_cast<uint8_t*>(&waveform_size),
+				  sizeof(waveform_size));
+	decode_base32(data, reinterpret_cast<uint8_t*>(&start), sizeof(start));
+	decode_base32(data, reinterpret_cast<uint8_t*>(&end), sizeof(end));
+	decode_base32(data,
+				  reinterpret_cast<uint8_t*>(&waveform_index),
+				  sizeof(waveform_index));
 }
 
 SamplesWaveformPart::SamplesWaveformPart() :
-	WaveformPart()
+	WaveformPart(Type::SAMPLES)
 {
 }
 
@@ -95,38 +123,42 @@ std::string SamplesWaveformPart::encode() const
 	return str;
 }
 
-void SamplesWaveformPart::decode(const std::string& data)
+void SamplesWaveformPart::decode(std::string_view& data)
 {
-	size_t offset = SAMPLES_STRING.size();
-	if (data.substr(0, offset) != SAMPLES_STRING)
+	if (!data.starts_with(SAMPLES_STRING))
 	{
 		return;
 	}
-	offset = decode_generic_part_parameters(data, offset);
+	data.remove_prefix(SAMPLES_STRING.size());
+	decode_generic_part_parameters(data);
 	uint32_t sample_count;
-	offset += decode_base32(data,
-							offset,
-							reinterpret_cast<uint8_t*>(&sample_count),
-							sizeof(sample_count));
+	decode_base32(data,
+				  reinterpret_cast<uint8_t*>(&sample_count),
+				  sizeof(sample_count));
 	samples.resize(sample_count);
-	offset += decode_base32(data,
-							offset,
-							reinterpret_cast<uint8_t*>(samples.data()),
-							sample_count * sizeof(float));
+	decode_base32(data,
+				  reinterpret_cast<uint8_t*>(samples.data()),
+				  sample_count * sizeof(float));
 }
 
 FunctionWaveformPart::FunctionWaveformPart() :
-	WaveformPart()
+	WaveformPart(Type::FUNCTION),
+	symbol_table(new exprtk::symbol_table<float>()),
+	expression(new exprtk::expression<float>()),
+	parser(new exprtk::parser<float>())
 {
-	symbol_table.add_constants();
-	symbol_table.add_variable("x", variable_x);
-	symbol_table.add_variable("y", variable_y);
+	symbol_table->add_constants();
+	symbol_table->add_variable("x", variable_x);
+	symbol_table->add_variable("y", variable_y);
 
-	expression.register_symbol_table(symbol_table);
+	expression->register_symbol_table(*symbol_table);
 }
 
 FunctionWaveformPart::~FunctionWaveformPart() noexcept
 {
+	delete symbol_table;
+	delete expression;
+	delete parser;
 }
 
 float FunctionWaveformPart::sample(size_t position) const
@@ -137,41 +169,46 @@ float FunctionWaveformPart::sample(size_t position) const
 	}
 	variable_x = position / (waveform_size - 1);
 	variable_y = waveform_index;
-	return expression.value();
+	return expression->value();
 }
 
 std::string FunctionWaveformPart::encode() const
 {
 	std::string str = FUNCTION_STRING;
 	str += encode_generic_part_parameters();
+	uint32_t str_len = function.size();
+	str += encode_base32(reinterpret_cast<const uint8_t*>(&str_len),
+						 sizeof(str_len));
 	str += function;
 	return str;
 }
 
-void FunctionWaveformPart::decode(const std::string& data)
+void FunctionWaveformPart::decode(std::string_view& data)
 {
-	size_t offset = FUNCTION_STRING.size();
-	if (data.substr(0, offset) != FUNCTION_STRING)
+	if (!data.starts_with(FUNCTION_STRING))
 	{
 		return;
 	}
-	offset = decode_generic_part_parameters(data, offset);
-	function = data.substr(offset);
+	data.remove_prefix(FUNCTION_STRING.size());
+	decode_generic_part_parameters(data);
+	uint32_t str_len = 0;
+	decode_base32(data, reinterpret_cast<uint8_t*>(&str_len), sizeof(str_len));
+	function = data.substr(0, str_len);
 
 	update();
 }
 
 void FunctionWaveformPart::update()
 {
-	bool ok = parser.compile(function, expression);
+	bool ok = parser->compile(function, *expression);
 	if (!ok)
 	{
-		parser.compile("0", expression);
+		parser->compile("0", *expression);
 	}
 }
 
 HarmonicsWaveformPart::HarmonicsWaveformPart() :
-	WaveformPart()
+	WaveformPart(Type::HARMONIC)
 {
 }
 
@@ -194,7 +231,7 @@ std::string HarmonicsWaveformPart::encode() const
 	std::string str = HARMONIC_STRING;
 	str += encode_generic_part_parameters();
 	str += encode_base32(reinterpret_cast<const uint8_t*>(&type), sizeof(type));
-	size_t harmonic_count = harmonics.size();
+	uint32_t harmonic_count = harmonics.size();
 	str += encode_base32(reinterpret_cast<const uint8_t*>(&harmonic_count),
 						 sizeof(harmonic_count));
 	str += encode_base32(reinterpret_cast<const uint8_t*>(&harmonics),
@@ -202,28 +239,23 @@ std::string HarmonicsWaveformPart::encode() const
 	return str;
 }
 
-void HarmonicsWaveformPart::decode(const std::string& data)
+void HarmonicsWaveformPart::decode(std::string_view& data)
 {
-	size_t offset = HARMONIC_STRING.size();
-	if (data.substr(0, offset) != HARMONIC_STRING)
+	if (!data.starts_with(HARMONIC_STRING))
 	{
 		return;
 	}
-	offset = decode_generic_part_parameters(data, offset);
-	offset += decode_base32(data,
-							offset,
-							reinterpret_cast<uint8_t*>(type),
-							sizeof(type));
-	size_t harmonic_count = 0;
-	offset += decode_base32(data,
-							offset,
-							reinterpret_cast<uint8_t*>(harmonic_count),
-							sizeof(harmonic_count));
+	data.remove_prefix(HARMONIC_STRING.size());
+	decode_generic_part_parameters(data);
+	decode_base32(data, reinterpret_cast<uint8_t*>(type), sizeof(type));
+	uint32_t harmonic_count = 0;
+	decode_base32(data,
+				  reinterpret_cast<uint8_t*>(harmonic_count),
+				  sizeof(harmonic_count));
 	harmonics.resize(harmonic_count);
-	offset += decode_base32(data,
-							offset,
-							reinterpret_cast<uint8_t*>(harmonics.data()),
-							harmonic_count * sizeof(Harmonic));
+	decode_base32(data,
+				  reinterpret_cast<uint8_t*>(harmonics.data()),
+				  harmonic_count * sizeof(Harmonic));
 
 	update();
 }
@@ -276,7 +308,7 @@ void create_sqr_wave(float data[], size_t size)
 void HarmonicsWaveformPart::update()
 {
 	samples.resize(waveform_size, 0);
-	if (type == SIN)
+	if (type == HarmonicType::SIN)
 	{
 		std::vector<double> real(waveform_size, 0);
 		std::vector<double> imag(waveform_size, 0);
@@ -298,13 +330,13 @@ void HarmonicsWaveformPart::update()
 		float base_wave[waveform_size];
 		switch (type)
 		{
-		case TRI:
+		case HarmonicType::TRI:
 			create_tri_wave(base_wave, waveform_size);
 			break;
-		case SAW:
+		case HarmonicType::SAW:
 			create_saw_wave(base_wave, waveform_size);
 			break;
-		case SQR:
+		case HarmonicType::SQR:
 			create_sqr_wave(base_wave, waveform_size);
 			break;
 		default:

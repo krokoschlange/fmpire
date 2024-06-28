@@ -15,10 +15,6 @@ Wavetable::Wavetable() :
 
 Wavetable::~Wavetable() noexcept
 {
-	if (data)
-	{
-		delete[] data;
-	}
 }
 
 float Wavetable::sample(const float position,
@@ -67,13 +63,19 @@ float Wavetable::sample(const float position,
 	return sample;
 }
 
+void Wavetable::get_size(size_t& w, size_t& h) const
+{
+	w = width;
+	h = height;
+}
+
 void Wavetable::get_sample_position(const float position,
 									const float phase,
 									size_t& pos_smpl,
 									size_t& phase_smpl) const
 {
 	phase_smpl = (size_t) (phase * width) % width;
-	pos_smpl = (size_t) (position * height) % height;
+	pos_smpl = (size_t) (position * (height - 1));
 }
 
 float Wavetable::get_position_interpolation_factor(const float position) const
@@ -91,9 +93,9 @@ float Wavetable::get_phase_interpolation_factor(const float phase) const
 float Wavetable::read(const size_t position, const size_t phase) const
 {
 	size_t wrapped_phase = phase % width;
-	size_t wrapped_pos = position & height;
-	size_t index = wrapped_pos * width + wrapped_phase;
-	return data[index];
+	size_t pos = std::min(position, height - 1);
+	size_t index = pos * width + wrapped_phase;
+	return (*data)[index];
 }
 
 

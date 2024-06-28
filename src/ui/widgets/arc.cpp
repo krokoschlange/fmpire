@@ -143,6 +143,7 @@ template<typename T> void Arc<T>::draw(const GraphicsContext& context, T width)
 	double rad_start = start_angle * (M_PI / 180) + M_PI_2;
 	double rad_End = end_angle * (M_PI / 180) + M_PI_2;
 
+	cairo_new_sub_path(handle);
 	cairo_arc(handle,
 			  center.getX(),
 			  center.getY(),

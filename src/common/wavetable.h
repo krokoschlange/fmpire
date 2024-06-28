@@ -1,7 +1,10 @@
 #ifndef WAVETABLE_H_INCLUDED
 #define WAVETABLE_H_INCLUDED
 
+#include "extra/ScopedPointer.hpp"
+
 #include <memory>
+#include <vector>
 
 namespace fmpire
 {
@@ -17,8 +20,10 @@ public:
 				 const bool interp_waves = true,
 				 const bool interp_phase = false) const;
 
+	void get_size(size_t& w, size_t& h) const;
+
 private:
-	float* data;
+	ScopedPointer<std::vector<float>> data;
 	size_t width;
 	size_t height;
 

@@ -1,6 +1,7 @@
 #ifndef WAVETABLE_CREATOR_H_INCLUDED
 #define WAVETABLE_CREATOR_H_INCLUDED
 
+#include "extra/ScopedPointer.hpp"
 #include "waveform.h"
 
 #include <stddef.h>
@@ -15,7 +16,11 @@ public:
 	WavetableCreator();
 	virtual ~WavetableCreator() noexcept;
 
-	float* create_wavetable(const size_t& width, const size_t& height) const;
+	ScopedPointer<std::vector<float>> create_wavetable(
+		const size_t width) const;
+
+	void set_state(const std::string& key, std::string_view& state);
+	std::string get_state() const;
 
 private:
 	std::vector<Waveform> waveforms;

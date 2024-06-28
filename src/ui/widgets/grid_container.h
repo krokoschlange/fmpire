@@ -2,14 +2,13 @@
 #define FMPIRE_GRID_CONTAINER_H_INCLUDED
 
 #include "fmpire_widget.h"
-#include "SubWidget.hpp"
 
 #include <vector>
 
 namespace fmpire
 {
 
-class GridContainer : public SubWidget, public FMpireWidget
+class GridContainer : public FMpireWidget
 {
 public:
 	explicit GridContainer(Widget* parent);

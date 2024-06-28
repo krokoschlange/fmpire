@@ -2,45 +2,52 @@
 #define FMPIRE_UI_H_INCLUDED
 
 #include "DistrhoUI.hpp"
+#include "fmpire_window.h"
+#include "selector.h"
 
-#include "grid_container.h"
-#include "knob.h"
+#include "state_manager.h"
 
 USE_NAMESPACE_DISTRHO
 
 namespace fmpire
 {
+class GridContainer;
+class OscillatorBar;
+class RelativeContainer;
+class WavetableEditor;
 
-class FMpireUI : public UI, public Knob::Callback
+class FMpireUI : public UI, public FMpireWindow, public Selector::Callback
 {
 public:
 	FMpireUI();
 	virtual ~FMpireUI() noexcept;
 
+	void switch_to_tab(const int tab);
+
 protected:
 	void parameterChanged(uint32_t index, float value) override;
 	void stateChanged(const char* key, const char* value) override;
 
+	void uiIdle() override;
+
 	void onDisplay() override;
+	bool onMotion(const MotionEvent& event) override;
 	void onResize(const ResizeEvent& ev) override;
 
-	void drag_started(Knob* const knob) override;
-	void drag_ended(Knob* const knob) override;
-	void value_changed(Knob* const knob, float value) override;
+	void on_selected(Selector* const selector,
+					 const int index,
+					 const std::string& option) override;
 
 private:
+	StateManager state_manager;
 	ScopedPointer<GridContainer> grid;
+	ScopedPointer<RelativeContainer> top_bar;
+	ScopedPointer<Selector> tab_selector;
+	ScopedPointer<OscillatorBar> oscillator_bar;
+
+	ScopedPointer<WavetableEditor> wavetable_editor;
 };
 
 } // namespace fmpire
-
-START_NAMESPACE_DISTRHO
-
-UI* createUI()
-{
-	return new fmpire::FMpireUI();
-}
-
-END_NAMESPACE_DISTRHO
 
 #endif // FMPIRE_UI_H_INCLUDED

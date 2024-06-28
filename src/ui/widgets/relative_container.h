@@ -2,14 +2,13 @@
 #define RELATIVE_CONTAINER_H_INCLUDED
 
 #include "fmpire_widget.h"
-#include "SubWidget.hpp"
 
 #include <vector>
 
 namespace fmpire
 {
 
-class RelativeContainer : public SubWidget, public FMpireWidget
+class RelativeContainer : public FMpireWidget
 {
 public:
 	explicit RelativeContainer(Widget* parent);
@@ -25,9 +24,9 @@ public:
 			 const Size<float> size);
 
 protected:
-	void onDisplay() override;
-	void onPositionChanged(const PositionChangedEvent& event) override;
-	void onResize(const ResizeEvent& event) override;
+	virtual void onDisplay() override;
+	virtual void onPositionChanged(const PositionChangedEvent& event) override;
+	virtual void onResize(const ResizeEvent& event) override;
 
 private:
 	struct RelativeChild

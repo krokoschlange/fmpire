@@ -21,6 +21,8 @@
 
 
 #define DISTRHO_UI_USER_RESIZABLE          1
+//#define DISTRHO_UI_DEFAULT_WIDTH           960
+//#define DISTRHO_UI_DEFAULT_HEIGHT          540
 
 #define DISTRHO_PLUGIN_BRAND_ID            Krks
 #define DISTRHO_PLUGIN_UNIQUE_ID           Kfmp

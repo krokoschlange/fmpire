@@ -36,7 +36,7 @@ std::string encode_base32(const uint8_t* const data, const size_t size)
 }
 
 size_t decode_base32(const std::string& encoded,
-					 const size_t offset,
+					 size_t offset,
 					 uint8_t* decoded,
 					 const size_t decoded_size)
 {
@@ -50,5 +50,18 @@ size_t decode_base32(const std::string& encoded,
 	}
 	return byte * 2;
 }
+
+void decode_base32(std::string_view& encoded,
+				   uint8_t* decoded,
+				   const size_t decoded_size)
+{
+	for (size_t byte = 0; byte < decoded_size && 1 < encoded.size(); byte++)
+	{
+		decoded[byte] = base32_decode[(uint8_t) encoded[0]]
+					  | (base32_decode[(uint8_t) encoded[1]] << 4);
+		encoded.remove_prefix(2);
+	}
+}
+
 
 } // namespace fmpire

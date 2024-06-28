@@ -4,7 +4,7 @@ namespace fmpire
 {
 
 GridContainer::GridContainer(Widget* parent) :
-	SubWidget(parent)
+	FMpireWidget(parent)
 {
 }
 
@@ -94,6 +94,15 @@ void GridContainer::put(SubWidget* widget,
 						uint row_span,
 						uint column_span)
 {
+	for (size_t grid_item = 0; grid_item < grid.size(); grid_item++)
+	{
+		GridChild& grid_child = grid[grid_item];
+		if (grid_child.widget == widget)
+		{
+			grid.erase(grid.begin() + grid_item);
+			grid_item--;
+		}
+	}
 	grid.push_back({row, column, row_span, column_span, widget});
 }
 
