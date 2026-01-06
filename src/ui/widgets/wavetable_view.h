@@ -21,6 +21,8 @@ public:
 	void on_press(Button* const button) override;
 	void on_release(Button* const button) override;
 
+	void set_wavetable_pos(float wt_pos) { wavetable_pos = wt_pos; }
+
 protected:
 	void onDisplay() override;
 	bool onMouse(const MouseEvent& event) override;
@@ -29,7 +31,9 @@ private:
 	size_t index;
 	bool single;
 
-	ScopedPointer<Button> edit_button;
+	float wavetable_pos;
+
+	Ref<Button> edit_button;
 	const Wavetable& wavetable;
 	StateManager& state_manager;
 };

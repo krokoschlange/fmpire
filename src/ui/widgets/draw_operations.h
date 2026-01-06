@@ -54,6 +54,14 @@ void fill_rounded_box(const GraphicsContext& context,
 					  float radius,
 					  float line_width = 1,
 					  Corner corners = Corner::ALL);
+void clip_rounded_box(const GraphicsContext& context,
+					  float left,
+					  float top,
+					  float width,
+					  float height,
+					  float radius,
+					  float line_width = 1,
+					  Corner corners = Corner::ALL);
 
 void draw_text(const GraphicsContext& context,
 			   const char* text,
@@ -70,6 +78,15 @@ void get_text_rect(const GraphicsContext& context,
 				   const float size,
 				   float& width,
 				   float& height);
+
+void get_text_rect(const GraphicsContext& context,
+				   const char* text,
+				   const char* font,
+				   const float size,
+				   float& width,
+				   float& height,
+				   float& bearing_x,
+				   float& bearing_y);
 
 float fit_text(const GraphicsContext& context,
 			   const char* text,

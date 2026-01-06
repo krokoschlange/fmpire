@@ -31,6 +31,7 @@ protected:
 	void uiIdle() override;
 
 	void onDisplay() override;
+	bool onMouse(const MouseEvent& event) override;
 	bool onMotion(const MotionEvent& event) override;
 	void onResize(const ResizeEvent& ev) override;
 
@@ -40,12 +41,12 @@ protected:
 
 private:
 	StateManager state_manager;
-	ScopedPointer<GridContainer> grid;
-	ScopedPointer<RelativeContainer> top_bar;
-	ScopedPointer<Selector> tab_selector;
-	ScopedPointer<OscillatorBar> oscillator_bar;
+	Ref<GridContainer> grid;
+	Ref<RelativeContainer> top_bar;
+	Ref<Selector> tab_selector;
+	Ref<OscillatorBar> oscillator_bar;
 
-	ScopedPointer<WavetableEditor> wavetable_editor;
+	Ref<WavetableEditor> wavetable_editor;
 };
 
 } // namespace fmpire

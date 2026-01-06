@@ -72,7 +72,7 @@ void FMpire::initState(uint32_t index, State& state)
 	{
 		state.hints = 0;
 		state.key = KEY_EVERYTHING;
-		state.defaultValue = "";
+		state.defaultValue = getState(state.key);
 		state.label = "everything";
 		state.description = "stores entire plugin state";
 		std::cout << state.key << std::endl;
@@ -125,7 +125,7 @@ void FMpire::setState(const char* key, const char* value)
 							index);
 		key_view.remove_prefix(res.ptr - key_view.data() + 1);
 		index = std::clamp<uint32_t>(index, 0, oscillators.size());
-		oscillators[index].set_state(std::string(key_view), state);
+		oscillators[index].set_state(key_view, state);
 	}
 
 	for (size_t voice_idx = 0; voice_idx < voices.size(); voice_idx++)

@@ -52,7 +52,17 @@ void StateManager::set_wavetable_editor(WavetableEditor* const editor)
 	wavetable_editor = editor;
 }
 
-WavetableCreator* StateManager::get_wavetable(const size_t index) const
+WavetableCreator* StateManager::get_wavetable_creator(const size_t index) const
+{
+	OscillatorSettings* osc_settings = oscillator_settings[index];
+	if (osc_settings)
+	{
+		return osc_settings->get_wavetable_creator();
+	}
+	return nullptr;
+}
+
+Wavetable* StateManager::get_wavetable(const size_t index) const
 {
 	OscillatorSettings* osc_settings = oscillator_settings[index];
 	if (osc_settings)
@@ -68,5 +78,14 @@ void StateManager::edit_wavetable(const size_t index) const
 	ui->switch_to_tab(3);
 }
 
+void StateManager::on_wavetable_edited(const size_t osc) const
+{
+	if (osc >= oscillator_settings.size())
+	{
+		return;
+	}
+
+	oscillator_settings[osc]->on_wavetable_changed();
+}
 
 } // namespace fmpire

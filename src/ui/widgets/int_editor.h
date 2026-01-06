@@ -19,6 +19,8 @@ public:
 	void set_tooltip(const std::string& text);
 	void set_label(const std::string& text);
 
+	int get_value() const { return value; }
+
 	struct Callback
 	{
 		virtual void on_value_changed(IntEditor* const editor,

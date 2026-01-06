@@ -6,7 +6,6 @@
 
 #include <array>
 #include <cstddef>
-#include <memory>
 #include <random>
 
 namespace fmpire
@@ -68,7 +67,7 @@ public:
 	ModulatorVoice();
 	virtual ~ModulatorVoice() noexcept;
 
-	void init(std::shared_ptr<Modulator> mod,
+	void init(Modulator& mod,
 			  const ModulatorTargetObjects& target_objects,
 			  const float rate);
 
@@ -79,7 +78,7 @@ public:
 	void set_state(const std::string& key, std::string_view& state);
 
 private:
-	std::shared_ptr<Modulator> modulator;
+	Modulator* modulator;
 	std::vector<float*> targets;
 
 	float samplerate;
@@ -104,7 +103,7 @@ public:
 	};
 
 	Voice(std::array<Oscillator, FMPIRE_OSC_COUNT>& oscs,
-		  std::vector<std::shared_ptr<Modulator>>& mods,
+		  std::vector<Modulator*>& mods,
 		  VoiceEndedCallback* ended_cb);
 	Voice(const Voice& voice);
 	virtual ~Voice() noexcept;
@@ -126,7 +125,7 @@ public:
 private:
 	bool active;
 	std::array<Oscillator, FMPIRE_OSC_COUNT>& oscillators;
-	std::vector<std::shared_ptr<Modulator>>& modulators;
+	std::vector<Modulator*>& modulators;
 	std::array<OscillatorVoice, FMPIRE_OSC_COUNT> oscillator_voices;
 	std::vector<ModulatorVoice> modulator_voices;
 	std::default_random_engine rand;

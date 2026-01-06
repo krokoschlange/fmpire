@@ -4,6 +4,8 @@
 #include "utils.h"
 
 #include <cmath>
+#include <cstring>
+#include <iostream>
 #include <string>
 
 namespace fmpire
@@ -23,20 +25,21 @@ Oscillator::Oscillator() :
 	unison_spread(0),
 	unison_phase_random(0)
 {
+	uint32_t width, height;
+	wavetable_creator.get_size(width, height);
+	wavetable.update(width, height, wavetable_creator.create_wavetable());
 }
 
 Oscillator::~Oscillator() noexcept
 {
 }
 
-float Oscillator::sample(const float phase,
-						 const float wavetable_position) const
+float Oscillator::sample(const float phase, const float wavetable_pos) const
 {
-	// return wavetable.sample(wavetable_position, phase);
-	return phase > 0.5 ? 1.0 : -1.0;
+	return wavetable.sample(wavetable_pos, phase);
 }
 
-void Oscillator::set_state(const std::string& key, std::string_view& state)
+void Oscillator::set_state(const std::string_view& key, std::string_view& state)
 {
 	if (key == KEY_EVERYTHING)
 	{
@@ -45,7 +48,7 @@ void Oscillator::set_state(const std::string& key, std::string_view& state)
 			return;
 		}
 		state.remove_prefix(OSC_DATA_STRING.size());
-		set_state(KEY_OSC_WAVETABLE, state);
+		set_state(KEY_OSC_WAVETABLE KEY_WT_ALL, state);
 		set_state(KEY_OSC_ACTIVE, state);
 		set_state(KEY_OSC_VOLUME, state);
 		set_state(KEY_OSC_WT_POS, state);
@@ -59,9 +62,16 @@ void Oscillator::set_state(const std::string& key, std::string_view& state)
 		set_state(KEY_OSC_UNISON_SPREAD, state);
 		set_state(KEY_OSC_UNISON_PHASE_RANDOM, state);
 	}
-	else if (key == KEY_OSC_WAVETABLE)
+	else if (key.starts_with(KEY_OSC_WAVETABLE))
 	{
-		wavetable_creator.set_state(KEY_WT_ALL, state);
+		std::string_view key_view = key;
+		key_view.remove_prefix(strlen(KEY_OSC_WAVETABLE));
+		wavetable_creator.set_state(std::string(key_view), state);
+
+		uint32_t width, height;
+		wavetable_creator.get_size(width, height);
+		wavetable.update(width, height, wavetable_creator.create_wavetable());
+		std::cout << "updated" << std::endl;
 	}
 	else if (key == KEY_OSC_ACTIVE)
 	{
@@ -70,65 +80,67 @@ void Oscillator::set_state(const std::string& key, std::string_view& state)
 	}
 	else if (key == KEY_OSC_VOLUME)
 	{
-		decode_base32(state,
+		decode_base64(state,
 					  reinterpret_cast<uint8_t*>(&volume),
 					  sizeof(volume));
+		std::cout << volume << std::endl;
 	}
 	else if (key == KEY_OSC_WT_POS)
 	{
-		decode_base32(state,
+		decode_base64(state,
 					  reinterpret_cast<uint8_t*>(&wavetable_position),
 					  sizeof(wavetable_position));
+		std::cout << "wtpos " << wavetable_position << std::endl;
 	}
 	else if (key == KEY_OSC_DETUNE)
 	{
-		decode_base32(state,
+		decode_base64(state,
 					  reinterpret_cast<uint8_t*>(&detune),
 					  sizeof(detune));
 	}
 	else if (key == KEY_OSC_PAN)
 	{
-		decode_base32(state, reinterpret_cast<uint8_t*>(&pan), sizeof(pan));
+		decode_base64(state, reinterpret_cast<uint8_t*>(&pan), sizeof(pan));
 	}
 	else if (key == KEY_OSC_NOTE_SHIFT)
 	{
-		decode_base32(state,
+		decode_base64(state,
 					  reinterpret_cast<uint8_t*>(&note_shift),
 					  sizeof(note_shift));
 	}
 	else if (key == KEY_OSC_PHASE_OFFSET)
 	{
-		decode_base32(state,
+		decode_base64(state,
 					  reinterpret_cast<uint8_t*>(&phase_offset),
 					  sizeof(phase_offset));
 	}
 	else if (key == KEY_OSC_PHASE_RANDOM)
 	{
-		decode_base32(state,
+		decode_base64(state,
 					  reinterpret_cast<uint8_t*>(&phase_random),
 					  sizeof(phase_random));
 	}
 	else if (key == KEY_OSC_UNISON_SIZE)
 	{
-		decode_base32(state,
+		decode_base64(state,
 					  reinterpret_cast<uint8_t*>(&unison_size),
 					  sizeof(unison_size));
 	}
 	else if (key == KEY_OSC_UNISON_DETUNE)
 	{
-		decode_base32(state,
+		decode_base64(state,
 					  reinterpret_cast<uint8_t*>(&unison_detune),
 					  sizeof(unison_detune));
 	}
 	else if (key == KEY_OSC_UNISON_SPREAD)
 	{
-		decode_base32(state,
+		decode_base64(state,
 					  reinterpret_cast<uint8_t*>(&unison_spread),
 					  sizeof(unison_spread));
 	}
 	else if (key == KEY_OSC_UNISON_PHASE_RANDOM)
 	{
-		decode_base32(state,
+		decode_base64(state,
 					  reinterpret_cast<uint8_t*>(&unison_phase_random),
 					  sizeof(unison_phase_random));
 	}
@@ -140,27 +152,27 @@ std::string Oscillator::get_state() const
 
 	data += wavetable_creator.get_state();
 	data += active ? "1" : "0";
-	data += encode_base32(reinterpret_cast<const uint8_t*>(&volume),
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&volume),
 						  sizeof(volume));
-	data += encode_base32(reinterpret_cast<const uint8_t*>(&wavetable_position),
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&wavetable_position),
 						  sizeof(wavetable_position));
-	data += encode_base32(reinterpret_cast<const uint8_t*>(&detune),
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&detune),
 						  sizeof(detune));
-	data += encode_base32(reinterpret_cast<const uint8_t*>(&pan), sizeof(pan));
-	data += encode_base32(reinterpret_cast<const uint8_t*>(&note_shift),
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&pan), sizeof(pan));
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&note_shift),
 						  sizeof(note_shift));
-	data += encode_base32(reinterpret_cast<const uint8_t*>(&phase_offset),
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&phase_offset),
 						  sizeof(phase_offset));
-	data += encode_base32(reinterpret_cast<const uint8_t*>(&phase_random),
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&phase_random),
 						  sizeof(phase_random));
-	data += encode_base32(reinterpret_cast<const uint8_t*>(&unison_size),
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&unison_size),
 						  sizeof(unison_size));
-	data += encode_base32(reinterpret_cast<const uint8_t*>(&unison_detune),
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&unison_detune),
 						  sizeof(unison_detune));
-	data += encode_base32(reinterpret_cast<const uint8_t*>(&unison_spread),
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&unison_spread),
 						  sizeof(unison_spread));
 	data +=
-		encode_base32(reinterpret_cast<const uint8_t*>(&unison_phase_random),
+		encode_base64(reinterpret_cast<const uint8_t*>(&unison_phase_random),
 					  sizeof(unison_phase_random));
 
 	return data;

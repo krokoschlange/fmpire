@@ -19,7 +19,7 @@ public:
 
 	void enable() { active = true; }
 
-	void set_state(const std::string& key, std::string_view& state);
+	void set_state(const std::string_view& key, std::string_view& state);
 
 	std::string get_state() const;
 

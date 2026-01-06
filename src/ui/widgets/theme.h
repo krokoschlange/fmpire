@@ -15,6 +15,7 @@ public:
 	Theme(Color bg,
 		  Color fg,
 		  Color hl,
+		  float very_thin,
 		  float thin,
 		  float thick,
 		  float radius,
@@ -22,6 +23,7 @@ public:
 		background(bg),
 		foreground(fg),
 		highlight(hl),
+		line_very_thin(very_thin),
 		line_thin(thin),
 		line_thick(thick),
 		corner_radius(radius),
@@ -32,6 +34,7 @@ public:
 	Color background;
 	Color foreground;
 	Color highlight;
+	float line_very_thin;
 	float line_thin;
 	float line_thick;
 	float corner_radius;

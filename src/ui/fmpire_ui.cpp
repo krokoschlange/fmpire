@@ -13,7 +13,6 @@ FMpireUI::FMpireUI() :
 	FMpireWindow(this),
 	state_manager(this)
 {
-	setSize(1024, 768);
 	grid = new GridContainer(this);
 	grid->setAbsolutePos(0, 0);
 	grid->setSize(100, 100);
@@ -38,6 +37,8 @@ FMpireUI::FMpireUI() :
 
 	wavetable_editor = new WavetableEditor(grid, state_manager);
 	grid->put(wavetable_editor, 1, 0);
+
+	setSize(1024, 768);
 
 
 	reinit_tooltip();
@@ -71,11 +72,26 @@ void FMpireUI::onDisplay()
 {
 }
 
+bool FMpireUI::onMouse(const MouseEvent& event)
+{
+	bool is_handled = UI::onMouse(event);
+
+	if (event.press && !is_handled)
+	{
+		if (get_focus())
+		{
+			get_focus()->repaint();
+		}
+		set_focus(nullptr);
+	}
+
+	return is_handled;
+}
+
 bool FMpireUI::onMotion(const MotionEvent& event)
 {
 	get_tooltip().handle_motion(event);
-	UI::onMotion(event);
-	return false;
+	return UI::onMotion(event);
 }
 
 void FMpireUI::onResize(const ResizeEvent& ev)
@@ -114,7 +130,6 @@ void FMpireUI::on_selected(Selector* const selector,
 }
 
 } // namespace fmpire
-
 
 START_NAMESPACE_DISTRHO
 

@@ -2,12 +2,12 @@
 
 #include "utils.h"
 #include <cmath>
+#include <cstdint>
 
 namespace fmpire
 {
 
 Wavetable::Wavetable() :
-	data(nullptr),
 	width(0),
 	height(0)
 {
@@ -22,7 +22,7 @@ float Wavetable::sample(const float position,
 						const bool interp_waves,
 						const bool interp_phase) const
 {
-	if (!data)
+	if (data.size() == 0)
 	{
 		return 0;
 	}
@@ -69,6 +69,13 @@ void Wavetable::get_size(size_t& w, size_t& h) const
 	h = height;
 }
 
+void Wavetable::update(uint32_t w, uint32_t h, std::vector<float>&& d)
+{
+	width = w;
+	height = h;
+	data = std::move(d);
+}
+
 void Wavetable::get_sample_position(const float position,
 									const float phase,
 									size_t& pos_smpl,
@@ -81,7 +88,7 @@ void Wavetable::get_sample_position(const float position,
 float Wavetable::get_position_interpolation_factor(const float position) const
 {
 	float whole;
-	return std::modf(position * height, &whole);
+	return std::modf(position * (height - 1), &whole);
 }
 
 float Wavetable::get_phase_interpolation_factor(const float phase) const
@@ -95,7 +102,7 @@ float Wavetable::read(const size_t position, const size_t phase) const
 	size_t wrapped_phase = phase % width;
 	size_t pos = std::min(position, height - 1);
 	size_t index = pos * width + wrapped_phase;
-	return (*data)[index];
+	return data[index];
 }
 
 

@@ -29,6 +29,8 @@ void Label::set_text_y_scale(const float scale)
 
 void Label::onDisplay()
 {
+	clip();
+
 	const GraphicsContext& context = getGraphicsContext();
 
 	float line_width = theme->line_thin;

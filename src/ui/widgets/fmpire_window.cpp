@@ -7,7 +7,8 @@ namespace fmpire
 
 FMpireWindow::FMpireWindow(TopLevelWidget* tlw) :
 	tooltip(nullptr),
-	top_level_widget(tlw)
+	top_level_widget(tlw),
+	focus(nullptr)
 {
 }
 

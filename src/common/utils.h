@@ -33,12 +33,12 @@ inline bool starts_with(const std::string& string, const std::string& prefix)
 	return (string.compare(0, prefix.size(), prefix) == 0);
 }
 
-std::string encode_base32(const uint8_t* const data, const size_t size);
-size_t decode_base32(const std::string& encoded,
+std::string encode_base64(const uint8_t* const data, const size_t size);
+size_t decode_base64(const std::string& encoded,
 					 size_t offset,
 					 uint8_t* decoded,
 					 const size_t decoded_size);
-void decode_base32(std::string_view& encoded,
+void decode_base64(std::string_view& encoded,
 				   uint8_t* decoded,
 				   const size_t decoded_size);
 

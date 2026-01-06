@@ -24,11 +24,10 @@ public:
 	virtual void on_release(Button* const button);
 
 private:
-	std::array<ScopedPointer<Border>, 3> borders;
-	std::array<ScopedPointer<OscillatorSettings>, FMPIRE_OSC_COUNT>
-		oscillator_settings;
-	ScopedPointer<Button> left;
-	ScopedPointer<Button> right;
+	std::array<Ref<Border>, 3> borders;
+	std::array<Ref<OscillatorSettings>, FMPIRE_OSC_COUNT> oscillator_settings;
+	Ref<Button> left;
+	Ref<Button> right;
 	int scroll_index;
 
 	void scroll(const int index);

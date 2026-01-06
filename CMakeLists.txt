@@ -25,6 +25,7 @@ dpf_add_plugin(fmpire
 		src/common/utils.cpp
 		src/common/waveform.cpp
 		src/common/waveform_part.cpp
+		src/common/wavetable.cpp
 		src/common/wavetable_creator.cpp
 		src/ui/double_click.cpp
 		src/ui/fmpire_ui.cpp
@@ -37,6 +38,7 @@ dpf_add_plugin(fmpire
 		src/ui/widgets/fmpire_widget.cpp
 		src/ui/widgets/fmpire_window.cpp
 		src/ui/widgets/grid_container.cpp
+		src/ui/widgets/harmonic_editor.cpp
 		src/ui/widgets/image_button.cpp
 		src/ui/widgets/int_editor.cpp
 		src/ui/widgets/knob.cpp
@@ -44,11 +46,16 @@ dpf_add_plugin(fmpire
 		src/ui/widgets/oscillator_bar.cpp
 		src/ui/widgets/oscillator_settings.cpp
 		src/ui/widgets/relative_container.cpp
+		src/ui/widgets/scroll_container.cpp
 		src/ui/widgets/selector.cpp
+		src/ui/widgets/spectrum_view.cpp
+		src/ui/widgets/text_entry.cpp
 		src/ui/widgets/theme.cpp
 		src/ui/widgets/tooltip.cpp
 		src/ui/widgets/waveform_editor.cpp
+		src/ui/widgets/waveform_part_editor.cpp
 		src/ui/widgets/waveform_selector.cpp
+		src/ui/widgets/waveform_tools.cpp
 		src/ui/widgets/wavetable_editor.cpp
 		src/ui/widgets/wavetable_view.cpp
 )

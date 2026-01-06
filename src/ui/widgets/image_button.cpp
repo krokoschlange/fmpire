@@ -19,6 +19,8 @@ ImageButton::~ImageButton() noexcept
 
 void ImageButton::onDisplay()
 {
+	clip();
+
 	const GraphicsContext& context = getGraphicsContext();
 
 	bool draw_bg = false;

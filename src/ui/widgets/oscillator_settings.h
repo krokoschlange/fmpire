@@ -39,29 +39,32 @@ public:
 	virtual void drag_ended(Knob* const knob) override;
 	virtual void value_changed(Knob* const knob, const float value) override;
 
-	WavetableCreator* get_wavetable() const;
+	WavetableCreator* get_wavetable_creator() const;
+	Wavetable* get_wavetable() const;
+
+	void on_wavetable_changed() const;
 
 private:
 	size_t index;
 	StateManager& state_manager;
-	ScopedPointer<Wavetable> wavetable;
-	ScopedPointer<WavetableCreator> wavetable_creator;
-	ScopedPointer<AspectRatioContainer> active_square;
-	ScopedPointer<Button> active;
-	ScopedPointer<Label> label;
-	ScopedPointer<WavetableView> wavetable_view;
-	ScopedPointer<Knob> volume;
-	ScopedPointer<Knob> wavetable_position;
-	ScopedPointer<Knob> detune;
-	ScopedPointer<Knob> pan;
-	ScopedPointer<IntEditor> octave_offset;
-	ScopedPointer<IntEditor> semi_offset;
-	ScopedPointer<Knob> phase_offset;
-	ScopedPointer<Knob> phase_random;
-	ScopedPointer<IntEditor> unison_size;
-	ScopedPointer<Knob> unison_detune;
-	ScopedPointer<Knob> unison_spread;
-	ScopedPointer<Knob> unison_phase_random;
+	Ref<Wavetable> wavetable;
+	Ref<WavetableCreator> wavetable_creator;
+	Ref<AspectRatioContainer> active_square;
+	Ref<Button> active;
+	Ref<Label> label;
+	Ref<WavetableView> wavetable_view;
+	Ref<Knob> volume;
+	Ref<Knob> wavetable_position;
+	Ref<Knob> detune;
+	Ref<Knob> pan;
+	Ref<IntEditor> octave_offset;
+	Ref<IntEditor> semi_offset;
+	Ref<Knob> phase_offset;
+	Ref<Knob> phase_random;
+	Ref<IntEditor> unison_size;
+	Ref<Knob> unison_detune;
+	Ref<Knob> unison_spread;
+	Ref<Knob> unison_phase_random;
 
 	std::string create_key(const std::string& subkey);
 	int octave_shift;

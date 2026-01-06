@@ -14,7 +14,7 @@ namespace fmpire
 #if defined(DGL_CAIRO)
 # include <cairo.h>
 
-void draw_rounded_box(const GraphicsContext& context,
+void rounded_box_path(cairo_t* const handle,
 					  float left,
 					  float top,
 					  float width,
@@ -23,8 +23,6 @@ void draw_rounded_box(const GraphicsContext& context,
 					  float line_width,
 					  Corner corners)
 {
-	cairo_t* const handle = ((const CairoGraphicsContext&) context).handle;
-
 	left += line_width / 2;
 	top += line_width / 2;
 	width -= line_width;
@@ -83,6 +81,26 @@ void draw_rounded_box(const GraphicsContext& context,
 		cairo_line_to(handle, left, top + height);
 	}
 	cairo_close_path(handle);
+}
+
+void draw_rounded_box(const GraphicsContext& context,
+					  float left,
+					  float top,
+					  float width,
+					  float height,
+					  float radius,
+					  float line_width,
+					  Corner corners)
+{
+	cairo_t* const handle = ((const CairoGraphicsContext&) context).handle;
+	rounded_box_path(handle,
+					 left,
+					 top,
+					 width,
+					 height,
+					 radius,
+					 line_width,
+					 corners);
 	cairo_set_line_width(handle, line_width);
 	cairo_stroke(handle);
 }
@@ -98,65 +116,39 @@ void fill_rounded_box(const GraphicsContext& context,
 {
 	cairo_t* const handle = ((const CairoGraphicsContext&) context).handle;
 
-	left += line_width / 2;
-	top += line_width / 2;
-	width -= line_width;
-	height -= line_width;
-	cairo_new_sub_path(handle);
-	if (any(corners & Corner::TOP_LEFT))
-	{
-		cairo_arc(handle,
-				  left + radius,
-				  top + radius,
-				  radius,
-				  M_PI,
-				  3 * M_PI_2);
-	}
-	else
-	{
-		cairo_move_to(handle, left, top);
-	}
-	if (any(corners & Corner::TOP_RIGHT))
-	{
-		cairo_arc(handle,
-				  left + width - radius,
-				  top + radius,
-				  radius,
-				  3 * M_PI_2,
-				  2 * M_PI);
-	}
-	else
-	{
-		cairo_line_to(handle, left + width, top);
-	}
-	if (any(corners & Corner::BOTTOM_RIGHT))
-	{
-		cairo_arc(handle,
-				  left + width - radius,
-				  top + height - radius,
-				  radius,
-				  0,
-				  M_PI_2);
-	}
-	else
-	{
-		cairo_line_to(handle, left + width, top + height);
-	}
-	if (any(corners & Corner::BOTTOM_LEFT))
-	{
-		cairo_arc(handle,
-				  left + radius,
-				  top + height - radius,
-				  radius,
-				  M_PI_2,
-				  M_PI);
-	}
-	else
-	{
-		cairo_line_to(handle, left, top + height);
-	}
+	rounded_box_path(handle,
+					 left,
+					 top,
+					 width,
+					 height,
+					 radius,
+					 line_width,
+					 corners);
 	cairo_close_path(handle);
 	cairo_fill(handle);
+}
+
+void clip_rounded_box(const GraphicsContext& context,
+					  float left,
+					  float top,
+					  float width,
+					  float height,
+					  float radius,
+					  float line_width,
+					  Corner corners)
+{
+	cairo_t* const handle = ((const CairoGraphicsContext&) context).handle;
+
+	rounded_box_path(handle,
+					 left,
+					 top,
+					 width,
+					 height,
+					 radius,
+					 line_width,
+					 corners);
+	cairo_close_path(handle);
+	cairo_clip(handle);
 }
 
 void draw_text(const GraphicsContext& context,
@@ -251,6 +243,30 @@ void get_text_rect(const GraphicsContext& context,
 	cairo_text_extents(handle, text, &xtents);
 	width = xtents.width;
 	height = xtents.height;
+}
+
+void get_text_rect(const GraphicsContext& context,
+				   const char* text,
+				   const char* font,
+				   const float size,
+				   float& width,
+				   float& height,
+				   float& bearing_x,
+				   float& bearing_y)
+{
+	cairo_t* const handle = ((const CairoGraphicsContext&) context).handle;
+
+	cairo_select_font_face(handle,
+						   font,
+						   CAIRO_FONT_SLANT_NORMAL,
+						   CAIRO_FONT_WEIGHT_NORMAL);
+	cairo_set_font_size(handle, size);
+	cairo_text_extents_t xtents;
+	cairo_text_extents(handle, text, &xtents);
+	width = xtents.width;
+	height = xtents.height;
+	bearing_x = xtents.x_bearing;
+	bearing_y = xtents.y_bearing;
 }
 
 float fit_text(const GraphicsContext& context,

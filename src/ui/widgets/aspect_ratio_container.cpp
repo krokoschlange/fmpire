@@ -4,7 +4,7 @@ namespace fmpire
 {
 
 AspectRatioContainer::AspectRatioContainer(Widget* parent) :
-	SubWidget(parent),
+	FMpireWidget(parent),
 	aspect_ratio(1)
 {
 }

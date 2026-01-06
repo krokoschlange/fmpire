@@ -59,6 +59,8 @@ void Selector::set_callback(Callback* cb)
 
 void Selector::onDisplay()
 {
+	clip();
+
 	const GraphicsContext& context = getGraphicsContext();
 
 	float line_width = theme->line_thin;
@@ -211,7 +213,7 @@ void Selector::onDisplay()
 
 bool Selector::onMouse(const MouseEvent& event)
 {
-	if (!contains(event.pos))
+	if (!contains_clipped(event.pos))
 	{
 		return false;
 	}
@@ -228,7 +230,7 @@ bool Selector::onMouse(const MouseEvent& event)
 
 bool Selector::onMotion(const MotionEvent& event)
 {
-	if (contains(event.pos))
+	if (contains_clipped(event.pos))
 	{
 		float box_width = (float) getWidth() / options.size();
 		hover = event.pos.getX() / box_width;
@@ -236,7 +238,7 @@ bool Selector::onMotion(const MotionEvent& event)
 		repaint();
 		return true;
 	}
-	else if (!contains(event.pos) && hover >= 0)
+	else if (!contains_clipped(event.pos) && hover >= 0)
 	{
 		hover = -1;
 		repaint();

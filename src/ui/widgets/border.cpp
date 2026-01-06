@@ -16,9 +16,11 @@ Border::~Border()
 
 void Border::onDisplay()
 {
+	clip();
+
 	const GraphicsContext& context = getGraphicsContext();
 	theme->background.setFor(context);
-	float line_width = theme->line_thin;
+	float line_width = theme->line_very_thin;
 	float radius = theme->corner_radius;
 	draw_rounded_box(context,
 					 0,

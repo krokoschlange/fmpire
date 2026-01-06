@@ -75,7 +75,7 @@ void Knob::set_callback(Callback* cb)
 
 bool Knob::onMouse(const MouseEvent& event)
 {
-	if (event.button == 1 && event.press && contains(event.pos))
+	if (event.button == 1 && event.press && contains_clipped(event.pos))
 	{
 		if (DoubleClick::is_double_click(event.button, event.time))
 		{
@@ -128,7 +128,7 @@ bool Knob::onMouse(const MouseEvent& event)
 
 bool Knob::onMotion(const MotionEvent& event)
 {
-	if (contains(event.pos))
+	if (contains_clipped(event.pos))
 	{
 		show_tooltip(create_tooltip_string(),
 					 event.absolutePos.getX(),
@@ -153,6 +153,8 @@ bool Knob::onMotion(const MotionEvent& event)
 
 void Knob::onDisplay()
 {
+	clip();
+
 	const GraphicsContext& context(getGraphicsContext());
 
 	float radius = std::min(getWidth(), getHeight()) * 0.75 * 0.5;

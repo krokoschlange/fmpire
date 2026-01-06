@@ -12,23 +12,23 @@
 namespace fmpire
 {
 
-std::shared_ptr<WaveformPart> WaveformPart::create(Type type)
+WaveformPart* WaveformPart::create(Type type)
 {
 	switch (type)
 	{
 	case Type::SAMPLES:
-		return std::make_shared<SamplesWaveformPart>();
+		return new SamplesWaveformPart();
 	case Type::FUNCTION:
-		return std::make_shared<FunctionWaveformPart>();
+		return new FunctionWaveformPart();
 	case Type::HARMONIC:
-		return std::make_shared<HarmonicsWaveformPart>();
+		return new HarmonicsWaveformPart();
 	}
-	return std::shared_ptr<WaveformPart>();
+	return nullptr;
 }
 
-std::shared_ptr<WaveformPart> WaveformPart::create(std::string_view& data)
+WaveformPart* WaveformPart::create(std::string_view& data)
 {
-	std::shared_ptr<WaveformPart> part;
+	WaveformPart* part = nullptr;
 	if (data.starts_with(SAMPLES_STRING))
 	{
 		part = create(Type::SAMPLES);
@@ -67,29 +67,24 @@ WaveformPart::Type WaveformPart::get_type() const
 	return type;
 }
 
+void WaveformPart::set_width_and_index(uint32_t wf_size, uint32_t wf_index)
+{
+	waveform_size = wf_size;
+	waveform_index = wf_index;
+}
+
 std::string WaveformPart::encode_generic_part_parameters() const
 {
 	std::string str =
-		encode_base32(reinterpret_cast<const uint8_t*>(&waveform_size),
-					  sizeof(waveform_size));
-	str +=
-		encode_base32(reinterpret_cast<const uint8_t*>(&start), sizeof(start));
-	str += encode_base32(reinterpret_cast<const uint8_t*>(&end), sizeof(end));
-	str += encode_base32(reinterpret_cast<const uint8_t*>(&waveform_index),
-						 sizeof(waveform_index));
+		encode_base64(reinterpret_cast<const uint8_t*>(&start), sizeof(start));
+	str += encode_base64(reinterpret_cast<const uint8_t*>(&end), sizeof(end));
 	return str;
 }
 
 void WaveformPart::decode_generic_part_parameters(std::string_view& data)
 {
-	decode_base32(data,
-				  reinterpret_cast<uint8_t*>(&waveform_size),
-				  sizeof(waveform_size));
-	decode_base32(data, reinterpret_cast<uint8_t*>(&start), sizeof(start));
-	decode_base32(data, reinterpret_cast<uint8_t*>(&end), sizeof(end));
-	decode_base32(data,
-				  reinterpret_cast<uint8_t*>(&waveform_index),
-				  sizeof(waveform_index));
+	decode_base64(data, reinterpret_cast<uint8_t*>(&start), sizeof(start));
+	decode_base64(data, reinterpret_cast<uint8_t*>(&end), sizeof(end));
 }
 
 SamplesWaveformPart::SamplesWaveformPart() :
@@ -116,9 +111,9 @@ std::string SamplesWaveformPart::encode() const
 	std::string str = SAMPLES_STRING;
 	str += encode_generic_part_parameters();
 	uint32_t sample_count = samples.size();
-	str += encode_base32(reinterpret_cast<const uint8_t*>(&sample_count),
+	str += encode_base64(reinterpret_cast<const uint8_t*>(&sample_count),
 						 sizeof(sample_count));
-	str += encode_base32(reinterpret_cast<const uint8_t*>(samples.data()),
+	str += encode_base64(reinterpret_cast<const uint8_t*>(samples.data()),
 						 samples.size() * sizeof(float));
 	return str;
 }
@@ -132,11 +127,11 @@ void SamplesWaveformPart::decode(std::string_view& data)
 	data.remove_prefix(SAMPLES_STRING.size());
 	decode_generic_part_parameters(data);
 	uint32_t sample_count;
-	decode_base32(data,
+	decode_base64(data,
 				  reinterpret_cast<uint8_t*>(&sample_count),
 				  sizeof(sample_count));
 	samples.resize(sample_count);
-	decode_base32(data,
+	decode_base64(data,
 				  reinterpret_cast<uint8_t*>(samples.data()),
 				  sample_count * sizeof(float));
 }
@@ -167,8 +162,9 @@ float FunctionWaveformPart::sample(size_t position) const
 	{
 		return 0;
 	}
-	variable_x = position / (waveform_size - 1);
+	variable_x = (float) position / (waveform_size);
 	variable_y = waveform_index;
+
 	return expression->value();
 }
 
@@ -177,7 +173,7 @@ std::string FunctionWaveformPart::encode() const
 	std::string str = FUNCTION_STRING;
 	str += encode_generic_part_parameters();
 	uint32_t str_len = function.size();
-	str += encode_base32(reinterpret_cast<const uint8_t*>(&str_len),
+	str += encode_base64(reinterpret_cast<const uint8_t*>(&str_len),
 						 sizeof(str_len));
 	str += function;
 	return str;
@@ -192,7 +188,7 @@ void FunctionWaveformPart::decode(std::string_view& data)
 	data.remove_prefix(FUNCTION_STRING.size());
 	decode_generic_part_parameters(data);
 	uint32_t str_len = 0;
-	decode_base32(data, reinterpret_cast<uint8_t*>(&str_len), sizeof(str_len));
+	decode_base64(data, reinterpret_cast<uint8_t*>(&str_len), sizeof(str_len));
 	function = data.substr(0, str_len);
 
 	update();
@@ -230,11 +226,11 @@ std::string HarmonicsWaveformPart::encode() const
 {
 	std::string str = HARMONIC_STRING;
 	str += encode_generic_part_parameters();
-	str += encode_base32(reinterpret_cast<const uint8_t*>(&type), sizeof(type));
+	str += encode_base64(reinterpret_cast<const uint8_t*>(&type), sizeof(type));
 	uint32_t harmonic_count = harmonics.size();
-	str += encode_base32(reinterpret_cast<const uint8_t*>(&harmonic_count),
+	str += encode_base64(reinterpret_cast<const uint8_t*>(&harmonic_count),
 						 sizeof(harmonic_count));
-	str += encode_base32(reinterpret_cast<const uint8_t*>(&harmonics),
+	str += encode_base64(reinterpret_cast<const uint8_t*>(&harmonics),
 						 harmonics.size() * sizeof(Harmonic));
 	return str;
 }
@@ -247,13 +243,13 @@ void HarmonicsWaveformPart::decode(std::string_view& data)
 	}
 	data.remove_prefix(HARMONIC_STRING.size());
 	decode_generic_part_parameters(data);
-	decode_base32(data, reinterpret_cast<uint8_t*>(type), sizeof(type));
+	decode_base64(data, reinterpret_cast<uint8_t*>(&type), sizeof(type));
 	uint32_t harmonic_count = 0;
-	decode_base32(data,
-				  reinterpret_cast<uint8_t*>(harmonic_count),
+	decode_base64(data,
+				  reinterpret_cast<uint8_t*>(&harmonic_count),
 				  sizeof(harmonic_count));
 	harmonics.resize(harmonic_count);
-	decode_base32(data,
+	decode_base64(data,
 				  reinterpret_cast<uint8_t*>(harmonics.data()),
 				  harmonic_count * sizeof(Harmonic));
 

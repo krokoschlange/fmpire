@@ -1,9 +1,10 @@
 #include "waveform_selector.h"
 
+#include "Base.hpp"
 #include "draw_operations.h"
 #include "wavetable.h"
 
-#define WAVEFORM_SELECTOR_HEIGHT 10
+#define WAVEFORM_BOX_HEIGHT 40
 
 namespace fmpire
 {
@@ -12,8 +13,7 @@ WaveformSelector::WaveformSelector(Widget* parent) :
 	FMpireWidget(parent),
 	wavetable(nullptr),
 	selected(0),
-	scroll(0),
-	scrolling(false),
+	dragging(-2),
 	callback(nullptr)
 {
 }
@@ -28,8 +28,50 @@ void WaveformSelector::set_wavetable(Wavetable* const wt)
 	repaint();
 }
 
+void WaveformSelector::set_callback(Callback* const cb)
+
+{
+	callback = cb;
+}
+
+void WaveformSelector::on_press(Button* const button)
+{
+	for (size_t i = 0; i < delete_buttons.size(); i++)
+	{
+		if ((Button*) delete_buttons[i] == button)
+		{
+			if (callback)
+			{
+				callback->remove_waveform(this, i);
+				select_waveform(i);
+				repaint();
+			}
+			return;
+		}
+	}
+}
+
+void WaveformSelector::select_waveform(size_t wf)
+{
+	size_t wt_width, wt_height;
+	wavetable->get_size(wt_width, wt_height);
+	if (wf >= wt_height)
+	{
+		wf = wt_height - 1;
+	}
+	selected = wf;
+
+	if (callback)
+	{
+		callback->on_select(this, selected);
+	}
+	getParentWidget()->repaint();
+}
+
 void WaveformSelector::onDisplay()
 {
+	clip();
+
 	const GraphicsContext& context = getGraphicsContext();
 	float radius = theme->corner_radius;
 	float line_width = theme->line_thin;
@@ -39,116 +81,295 @@ void WaveformSelector::onDisplay()
 		size_t w, h;
 
 		wavetable->get_size(w, h);
-		float box_height = getHeight() / WAVEFORM_SELECTOR_HEIGHT;
-		if (h > WAVEFORM_SELECTOR_HEIGHT)
-		{
-			drawable_width *= 0.95;
-			theme->background.setFor(context);
-			fill_rounded_box(context,
-							 drawable_width,
-							 0,
-							 getWidth() * 0.05,
-							 getHeight(),
-							 radius,
-							 line_width);
-			if (scrolling)
-			{
-				theme->highlight.setFor(context);
-			}
-			else
-			{
-				theme->foreground.setFor(context);
-			}
-			float scrollbar_y = scroll / (h * box_height) * getHeight();
-			draw_rounded_box(context,
-							 drawable_width,
-							 scrollbar_y,
-							 getWidth() * 0.05,
-							 (float) WAVEFORM_SELECTOR_HEIGHT / h,
-							 radius,
-							 line_width);
-		}
+		float box_height = WAVEFORM_BOX_HEIGHT;
+
 		std::vector<Point<float>> line(drawable_width);
 
 		for (size_t pos = 0; pos < h; pos++)
 		{
-			float rel_pos = (float) pos / (h - 1);
+			if (pos == dragging)
+			{
+				continue;
+			}
+
+			Corner corners = pos == 0
+							   ? Corner::TOP
+							   : (pos == h - 1 ? Corner::BOTTOM : Corner::NONE);
+			if (selected == pos)
+			{
+				theme->foreground.setFor(context);
+				fill_rounded_box(context,
+								 0,
+								 pos * box_height,
+								 getWidth(),
+								 box_height,
+								 theme->corner_radius,
+								 theme->line_thin,
+								 corners);
+
+				theme->highlight.setFor(context);
+				draw_rounded_box(context,
+								 0,
+								 pos * box_height,
+								 getWidth(),
+								 box_height,
+								 theme->corner_radius,
+								 theme->line_thin,
+								 corners);
+			}
+			else
+			{
+				theme->background.setFor(context);
+				draw_rounded_box(context,
+								 0,
+								 pos * box_height,
+								 getWidth(),
+								 box_height,
+								 theme->corner_radius,
+								 1,
+								 corners);
+			}
+
+			float rel_pos = (pos + 0.5f) / (h - 1);
+			if (h == 1)
+			{
+				rel_pos = 0;
+			}
 			for (size_t smpl = 0; smpl < drawable_width; smpl++)
 			{
 				float phase = (float) smpl / drawable_width;
 				float val = wavetable->sample(rel_pos, phase, false, false);
 				val = 1 - val * 0.5 - 0.5;
 				line[smpl].setX(smpl);
-				line[smpl].setY((pos + val) * box_height - scroll);
+				line[smpl].setY((pos + val) * box_height);
 			}
 
 			theme->highlight.setFor(context);
 			draw_line_string(context, line, 1);
+
+			draw_text(context,
+					  std::to_string(pos + 1).c_str(),
+					  theme->font.c_str(),
+					  box_height * 0.5,
+					  Anchor::LEFT_CENTER,
+					  5,
+					  ((pos + 0.5f) * box_height));
+		}
+
+		if (dragging >= 0)
+		{
+			Line<float> line(0,
+							 drop_index * WAVEFORM_BOX_HEIGHT,
+							 getWidth(),
+							 drop_index * WAVEFORM_BOX_HEIGHT);
+
+			theme->highlight.setFor(context);
+			line.draw(context, theme->line_thin);
 		}
 	}
-	theme->foreground.setFor(context);
-	draw_rounded_box(context,
-					 0,
-					 0,
-					 drawable_width,
-					 getHeight(),
-					 radius,
-					 line_width);
+
+	update_delete_buttons();
 }
 
 bool WaveformSelector::onMouse(const MouseEvent& event)
 {
-	if (event.button == 1 && !event.press && scrolling)
+	const bool is_handled = FMpireWidget::onMouse(event);
+	if (!is_handled && contains_clipped(event.pos) && event.button == 1
+		&& event.press)
 	{
-		scrolling = false;
-		return true;
-	}
-	else if (event.button == 1 && !event.press && dragging >= 0)
-	{
+		float y = event.pos.getY();
+		float box_size = WAVEFORM_BOX_HEIGHT;
+		select_waveform(y / box_size);
 		dragging = -1;
 		return true;
 	}
-	if (contains(event.pos) && event.button == 1 && event.press
-		&& event.pos.getX() > getWidth() * 0.95)
+	if (!event.press)
 	{
-		scrolling = true;
-		return true;
-	}
-	else if (contains(event.pos) && event.button == 1 && event.press)
-	{
-		float y = event.pos.getY();
-		y += scroll;
-		float box_size = getHeight() / WAVEFORM_SELECTOR_HEIGHT;
-		selected = y / box_size;
-		if (callback)
+		if (contains_clipped(event.pos) && dragging >= 0)
 		{
-			callback->on_select(this, selected);
+			if (callback)
+			{
+				if (drop_index > selected)
+				{
+					drop_index--;
+				}
+				callback->on_waveform_moved(this, selected, drop_index);
+				select_waveform(drop_index);
+			}
+			repaint();
 		}
-		return true;
+		drag_and_drop = nullptr;
+		dragging = -2;
 	}
-	return false;
+	return is_handled;
 }
 
 bool WaveformSelector::onMotion(const MotionEvent& event)
 {
-	if (dragging >= 0)
+	if (dragging == -1)
 	{
-		return true;
+		dragging = selected;
+		drag_and_drop =
+			new WaveformDragAndDrop(getTopLevelWidget(), wavetable, selected);
+		drag_and_drop->setSize(getWidth(), WAVEFORM_BOX_HEIGHT);
 	}
-	if (scrolling)
+	else if (dragging >= 0)
 	{
-		size_t w = 0, h = 0;
-		if (wavetable)
+		drop_index = event.pos.getY() / WAVEFORM_BOX_HEIGHT + 0.5;
+	}
+	return FMpireWidget::onMotion(event);
+}
+
+void WaveformSelector::onPositionChanged(const PositionChangedEvent& event)
+{
+	update_delete_button_positions();
+}
+
+void WaveformSelector::onResize(const ResizeEvent& event)
+{
+	update_delete_button_positions();
+}
+
+void WaveformSelector::update_delete_buttons()
+{
+	if (wavetable == nullptr)
+	{
+		return;
+	}
+	size_t wt_width, wt_height;
+	wavetable->get_size(wt_width, wt_height);
+
+	if (wt_height == delete_buttons.size())
+	{
+		return;
+	}
+
+	if (wt_height == 1)
+	{
+		delete_buttons.clear();
+		return;
+	}
+
+	delete_buttons.resize(wt_height);
+
+	for (size_t i = 0; i < wt_height; i++)
+	{
+		if (delete_buttons[i] == nullptr)
 		{
-			wavetable->get_size(w, h);
+			delete_buttons[i] = new Button(this);
+			delete_buttons[i]->set_text("–");
+			delete_buttons[i]->set_callback(this);
 		}
-		float box_size = (float) getHeight() / WAVEFORM_SELECTOR_HEIGHT;
-
-
-		scroll = std::clamp<float>(scroll, 0, box_size * h - getHeight());
-		last_mouse_pos = event.absolutePos;
-		return true;
 	}
+	update_delete_button_positions();
+}
+
+void WaveformSelector::update_delete_button_positions()
+{
+	const float box_size = WAVEFORM_BOX_HEIGHT;
+	for (size_t i = 0; i < delete_buttons.size(); i++)
+	{
+		delete_buttons[i]->setAbsolutePos(
+			getAbsolutePos()
+			+ Point<int>(getWidth() - 5 - box_size * 0.5,
+						 box_size * (0.25 + i)));
+		delete_buttons[i]->setWidth(box_size * 0.5);
+		delete_buttons[i]->setHeight(box_size * 0.5);
+		delete_buttons[i]->set_drawing_normal_bg(true);
+	}
+}
+
+WaveformDragAndDrop::WaveformDragAndDrop(Widget* parent,
+										 Wavetable* wt,
+										 uint32_t idx) :
+	FMpireWidget(parent),
+	wavetable(wt),
+	waveform_idx(idx)
+{
+}
+
+WaveformDragAndDrop::~WaveformDragAndDrop() noexcept
+{
+}
+
+void WaveformDragAndDrop::onDisplay()
+{
+	const GraphicsContext& context = getGraphicsContext();
+
+	clip_rounded_box(context,
+					 0,
+					 0,
+					 getWidth(),
+					 getHeight(),
+					 theme->corner_radius,
+					 0);
+
+	theme->background.setFor(context);
+	fill_rounded_box(context,
+					 0,
+					 0,
+					 getWidth(),
+					 getHeight(),
+					 theme->corner_radius);
+
+	size_t drawable_width = getWidth();
+	std::vector<Point<float>> line(drawable_width);
+
+	size_t wt_width, wt_height;
+	wavetable->get_size(wt_width, wt_height);
+
+	float rel_pos = (waveform_idx + 0.5f) / (wt_height - 1);
+	if (wt_height == 1)
+	{
+		rel_pos = 0;
+	}
+
+	for (size_t smpl = 0; smpl < drawable_width; smpl++)
+	{
+		float phase = (float) smpl / drawable_width;
+		float val = wavetable->sample(rel_pos, phase, false, false);
+		val = 1 - val * 0.5 - 0.5;
+		line[smpl].setX(smpl);
+		line[smpl].setY(val * getHeight());
+	}
+
+	theme->highlight.setFor(context);
+	draw_line_string(context, line, 1);
+
+	draw_text(context,
+			  std::to_string(waveform_idx + 1).c_str(),
+			  theme->font.c_str(),
+			  getHeight() * 0.5,
+			  Anchor::LEFT_CENTER,
+			  5,
+			  (0.5f * getHeight()));
+
+	theme->foreground.setFor(context);
+	draw_rounded_box(context,
+					 0,
+					 0,
+					 getWidth(),
+					 getHeight(),
+					 theme->corner_radius,
+					 theme->line_thin);
+}
+
+bool WaveformDragAndDrop::onMotion(const MotionEvent& event)
+{
+	uint32_t window_width = getWindow().getWidth();
+	uint32_t window_height = getWindow().getHeight();
+
+	float pos_x = event.absolutePos.getX() + 5;
+	if (pos_x + getWidth() > window_width)
+	{
+		pos_x = event.absolutePos.getX() - 5 - getWidth();
+	}
+
+	float pos_y =
+		std::min<float>(event.absolutePos.getY(), window_height - getHeight());
+
+	setAbsolutePos(pos_x, pos_y);
+
 	return false;
 }
 

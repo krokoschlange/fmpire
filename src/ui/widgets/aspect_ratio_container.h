@@ -1,12 +1,12 @@
 #ifndef SQUARE_CONTAINER_H_INCLUDED
 #define SQUARE_CONTAINER_H_INCLUDED
 
-#include "SubWidget.hpp"
+#include "fmpire_widget.h"
 
 namespace fmpire
 {
 
-class AspectRatioContainer : public SubWidget
+class AspectRatioContainer : public FMpireWidget
 {
 public:
 	AspectRatioContainer(Widget* parent);

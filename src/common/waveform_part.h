@@ -1,15 +1,15 @@
 #ifndef WAVEFORM_PART_H_INCLUDED
 #define WAVEFORM_PART_H_INCLUDED
 
+#include "ref_counted.h"
 #include <cstdint>
-#include <memory>
 #include <string>
 #include <vector>
 
 namespace fmpire
 {
 
-class WaveformPart
+class WaveformPart : public RefCounted
 {
 public:
 	enum class Type
@@ -19,8 +19,8 @@ public:
 		HARMONIC,
 	};
 
-	static std::shared_ptr<WaveformPart> create(const Type type);
-	static std::shared_ptr<WaveformPart> create(std::string_view& data);
+	static WaveformPart* create(const Type type);
+	static WaveformPart* create(std::string_view& data);
 	virtual ~WaveformPart() noexcept;
 
 	inline bool contains(size_t position) const
@@ -29,6 +29,16 @@ public:
 	}
 
 	Type get_type() const;
+
+	void set_width_and_index(uint32_t wf_size, uint32_t wf_index);
+
+	inline uint32_t get_start() const { return start; }
+
+	inline uint32_t get_end() const { return end; }
+
+	inline void set_start(uint32_t s) { start = s; }
+
+	inline void set_end(uint32_t e) { end = e; }
 
 	virtual float sample(size_t position) const = 0;
 

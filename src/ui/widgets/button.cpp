@@ -9,7 +9,8 @@ Button::Button(Widget* parent) :
 	state(State::NORMAL),
 	text(""),
 	text_y_scale(0.5),
-	callback(nullptr)
+	callback(nullptr),
+	is_drawing_normal_bg(false)
 {
 }
 
@@ -69,6 +70,8 @@ void Button::set_callback(Callback* cb)
 
 void Button::onDisplay()
 {
+	clip();
+
 	const GraphicsContext& context = getGraphicsContext();
 
 	bool draw_bg = false;
@@ -76,6 +79,11 @@ void Button::onDisplay()
 	{
 	case State::DISABLED:
 	case State::NORMAL:
+		if (is_drawing_normal_bg)
+		{
+			draw_bg = true;
+			theme->background.setFor(context);
+		}
 		break;
 	case State::HOVER:
 		draw_bg = true;
@@ -144,7 +152,7 @@ bool Button::onMouse(const MouseEvent& event)
 	{
 		return false;
 	}
-	if (contains(event.pos) && event.button == 1 && event.press)
+	if (contains_clipped(event.pos) && event.button == 1 && event.press)
 	{
 		bool is_press = true;
 		if (state != State::PRESS)
@@ -189,7 +197,7 @@ bool Button::onMotion(const MotionEvent& event)
 	{
 		return true;
 	}
-	if (contains(event.pos))
+	if (contains_clipped(event.pos))
 	{
 		if (state == State::NORMAL)
 		{
@@ -198,7 +206,7 @@ bool Button::onMotion(const MotionEvent& event)
 		}
 		return true;
 	}
-	if (!contains(event.pos) && state == State::HOVER)
+	if (!contains_clipped(event.pos) && state == State::HOVER)
 	{
 		state = State::NORMAL;
 		repaint();

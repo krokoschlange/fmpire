@@ -1,15 +1,14 @@
 #ifndef WAVETABLE_H_INCLUDED
 #define WAVETABLE_H_INCLUDED
 
-#include "extra/ScopedPointer.hpp"
-
-#include <memory>
+#include "ref_counted.h"
+#include <cstdint>
 #include <vector>
 
 namespace fmpire
 {
 
-class Wavetable
+class Wavetable : public RefCounted
 {
 public:
 	Wavetable();
@@ -22,8 +21,10 @@ public:
 
 	void get_size(size_t& w, size_t& h) const;
 
+	void update(uint32_t w, uint32_t h, std::vector<float>&& d);
+
 private:
-	ScopedPointer<std::vector<float>> data;
+	std::vector<float> data;
 	size_t width;
 	size_t height;
 

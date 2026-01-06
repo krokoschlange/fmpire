@@ -3,8 +3,6 @@
 
 # include "Geometry.hpp"
 
-# include <vector>
-
 namespace fmpire
 {
 

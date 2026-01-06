@@ -10,6 +10,8 @@
 #include "wavetable_creator.h"
 #include "wavetable_view.h"
 
+#include <iostream>
+
 namespace fmpire
 {
 
@@ -132,6 +134,8 @@ OscillatorSettings::OscillatorSettings(Widget* parent,
 	unison_phase_random->set_label("U RND");
 	unison_phase_random->set_tooltip("Unison Phase Random");
 	put(unison_phase_random, 4, 3);
+
+	on_wavetable_changed();
 }
 
 OscillatorSettings::~OscillatorSettings() noexcept
@@ -146,37 +150,38 @@ void OscillatorSettings::set_state(std::string_view& state)
 	}
 	state.remove_prefix(OSC_DATA_STRING.size());
 	wavetable_creator->set_state(KEY_WT_ALL, state);
+	on_wavetable_changed();
 	float value = 0;
 	active->set_pressed(state.starts_with("1"));
 	state.remove_prefix(1);
-	decode_base32(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
+	decode_base64(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
 	volume->set_value(value);
-	decode_base32(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
+	decode_base64(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
 	wavetable_position->set_value(value);
-	decode_base32(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
+	decode_base64(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
 	detune->set_value(value);
-	decode_base32(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
+	decode_base64(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
 	pan->set_value(value);
 	int note_shift = 0;
-	decode_base32(state,
+	decode_base64(state,
 				  reinterpret_cast<uint8_t*>(&note_shift),
 				  sizeof(note_shift));
 	octave_shift = note_shift / 12;
 	octave_offset->set_value(octave_shift);
 	semi_shift = note_shift % 12;
 	semi_offset->set_value(semi_shift);
-	decode_base32(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
+	decode_base64(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
 	phase_offset->set_value(value);
-	decode_base32(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
+	decode_base64(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
 	phase_random->set_value(value);
 	uint32_t u_size;
-	decode_base32(state, reinterpret_cast<uint8_t*>(&u_size), sizeof(u_size));
+	decode_base64(state, reinterpret_cast<uint8_t*>(&u_size), sizeof(u_size));
 	unison_size->set_value(u_size);
-	decode_base32(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
+	decode_base64(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
 	unison_detune->set_value(value);
-	decode_base32(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
+	decode_base64(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
 	unison_spread->set_value(value);
-	decode_base32(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
+	decode_base64(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
 	unison_phase_random->set_value(value);
 }
 
@@ -206,7 +211,7 @@ void OscillatorSettings::on_value_changed(IntEditor* const editor,
 		key = create_key(KEY_OSC_NOTE_SHIFT);
 		octave_shift = value;
 		int note_shift = octave_shift * 12 + semi_shift;
-		data = encode_base32(reinterpret_cast<const uint8_t*>(&note_shift),
+		data = encode_base64(reinterpret_cast<const uint8_t*>(&note_shift),
 							 sizeof(note_shift));
 	}
 	else if (editor == semi_offset)
@@ -214,13 +219,13 @@ void OscillatorSettings::on_value_changed(IntEditor* const editor,
 		key = create_key(KEY_OSC_NOTE_SHIFT);
 		semi_shift = value;
 		int note_shift = octave_shift * 12 + semi_shift;
-		data = encode_base32(reinterpret_cast<const uint8_t*>(&note_shift),
+		data = encode_base64(reinterpret_cast<const uint8_t*>(&note_shift),
 							 sizeof(note_shift));
 	}
 	else if (editor == unison_size)
 	{
 		key = create_key(KEY_OSC_UNISON_SIZE);
-		data = encode_base32(reinterpret_cast<const uint8_t*>(&value),
+		data = encode_base64(reinterpret_cast<const uint8_t*>(&value),
 							 sizeof(value));
 	}
 	if (!key.empty())
@@ -240,7 +245,8 @@ void OscillatorSettings::drag_ended(Knob* const knob)
 void OscillatorSettings::value_changed(Knob* const knob, const float value)
 {
 	std::string data =
-		encode_base32(reinterpret_cast<const uint8_t*>(&value), sizeof(value));
+		encode_base64(reinterpret_cast<const uint8_t*>(&value), sizeof(value));
+	std::cout << "knob changed " << value << ": " << data.c_str() << std::endl;
 	std::string key = KEY_OSC_PREFIX + std::to_string(index) + "/";
 	if (knob == volume)
 	{
@@ -249,6 +255,7 @@ void OscillatorSettings::value_changed(Knob* const knob, const float value)
 	else if (knob == wavetable_position)
 	{
 		key += KEY_OSC_WT_POS;
+		wavetable_view->set_wavetable_pos(value);
 	}
 	else if (knob == detune)
 	{
@@ -286,9 +293,21 @@ std::string OscillatorSettings::create_key(const std::string& subkey)
 	return KEY_OSC_PREFIX + std::to_string(index) + "/" + subkey;
 }
 
-WavetableCreator* OscillatorSettings::get_wavetable() const
+WavetableCreator* OscillatorSettings::get_wavetable_creator() const
 {
 	return wavetable_creator;
+}
+
+Wavetable* OscillatorSettings::get_wavetable() const
+{
+	return wavetable;
+}
+
+void OscillatorSettings::on_wavetable_changed() const
+{
+	uint32_t width, height;
+	wavetable_creator->get_size(width, height);
+	wavetable->update(width, height, wavetable_creator->create_wavetable());
 }
 
 } // namespace fmpire

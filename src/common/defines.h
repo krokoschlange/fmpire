@@ -29,6 +29,7 @@
 #define KEY_OSC_UNISON_PHASE_RANDOM "unison_phase_random"
 
 #define KEY_WT_ALL                  "all"
+#define KEY_WT_INSERT               "insert"
 #define KEY_WT_UPDATE               "update"
 #define KEY_WT_REMOVE               "remove"
 

@@ -66,6 +66,8 @@ void IntEditor::set_callback(Callback* const cb)
 
 void IntEditor::onDisplay()
 {
+	clip();
+
 	const GraphicsContext& context = getGraphicsContext();
 
 	float radius = theme->corner_radius;
@@ -223,7 +225,7 @@ bool IntEditor::onMouse(const MouseEvent& event)
 			return true;
 		}
 	}
-	if (event.button == 1 && event.press && contains(event.pos))
+	if (event.button == 1 && event.press && contains_clipped(event.pos))
 	{
 		if (event.pos.getX() < getWidth() * 0.2)
 		{
@@ -264,7 +266,7 @@ bool IntEditor::onMouse(const MouseEvent& event)
 
 bool IntEditor::onMotion(const MotionEvent& event)
 {
-	if (contains(event.pos))
+	if (contains_clipped(event.pos))
 	{
 		show_tooltip(tooltip,
 					 event.absolutePos.getX(),

@@ -15,6 +15,10 @@ public:
 
 	Tooltip& get_tooltip();
 
+	void set_focus(FMpireWidget* widget) { focus = widget; }
+
+	FMpireWidget* get_focus() const { return focus; }
+
 protected:
 	void reinit_tooltip();
 

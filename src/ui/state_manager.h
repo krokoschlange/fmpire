@@ -11,6 +11,7 @@ namespace fmpire
 {
 class FMpireUI;
 class OscillatorSettings;
+class Wavetable;
 class WavetableCreator;
 class WavetableEditor;
 
@@ -26,9 +27,12 @@ public:
 	void add(OscillatorSettings* const osc_settings, size_t index);
 	void set_wavetable_editor(WavetableEditor* const editor);
 
-	WavetableCreator* get_wavetable(const size_t index) const;
+	WavetableCreator* get_wavetable_creator(const size_t index) const;
+	Wavetable* get_wavetable(const size_t index) const;
 
 	void edit_wavetable(const size_t index) const;
+
+	void on_wavetable_edited(const size_t osc) const;
 
 private:
 	FMpireUI* ui;

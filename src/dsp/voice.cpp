@@ -153,47 +153,48 @@ void OscillatorVoice::set_state(const std::string& key, std::string_view& state)
 {
 	if (key == KEY_OSC_VOLUME)
 	{
-		decode_base32(state,
+		decode_base64(state,
 					  reinterpret_cast<uint8_t*>(&volume),
 					  sizeof(volume));
 	}
 	else if (key == KEY_OSC_WT_POS)
 	{
-		decode_base32(state,
+		decode_base64(state,
 					  reinterpret_cast<uint8_t*>(&wavetable_position),
 					  sizeof(wavetable_position));
 	}
 	else if (key == KEY_OSC_DETUNE)
 	{
-		decode_base32(state,
+		decode_base64(state,
 					  reinterpret_cast<uint8_t*>(&detune),
 					  sizeof(detune));
 	}
 	else if (key == KEY_OSC_PAN)
 	{
-		decode_base32(state, reinterpret_cast<uint8_t*>(&pan), sizeof(pan));
+		decode_base64(state, reinterpret_cast<uint8_t*>(&pan), sizeof(pan));
 	}
 	else if (key == KEY_OSC_NOTE_SHIFT)
 	{
-		decode_base32(state,
+		decode_base64(state,
 					  reinterpret_cast<uint8_t*>(&note_shift),
 					  sizeof(note_shift));
 	}
 	else if (key == KEY_OSC_UNISON_DETUNE)
 	{
-		decode_base32(state,
+		decode_base64(state,
 					  reinterpret_cast<uint8_t*>(&unison_detune),
 					  sizeof(unison_detune));
 	}
 	else if (key == KEY_OSC_UNISON_SPREAD)
 	{
-		decode_base32(state,
+		decode_base64(state,
 					  reinterpret_cast<uint8_t*>(&unison_spread),
 					  sizeof(unison_spread));
 	}
 }
 
-ModulatorVoice::ModulatorVoice()
+ModulatorVoice::ModulatorVoice() :
+modulator(nullptr)
 {
 }
 
@@ -201,11 +202,11 @@ ModulatorVoice::~ModulatorVoice() noexcept
 {
 }
 
-void ModulatorVoice::init(std::shared_ptr<Modulator> mod,
+void ModulatorVoice::init(Modulator& mod,
 						  const ModulatorTargetObjects& target_objects,
 						  const float rate)
 {
-	modulator = mod;
+	modulator = &mod;
 	targets.resize(modulator->targets.size());
 	for (size_t target_idx = 0; target_idx < modulator->targets.size();
 		 target_idx++)
@@ -246,7 +247,7 @@ void ModulatorVoice::release()
 }
 
 Voice::Voice(std::array<fmpire::Oscillator, FMPIRE_OSC_COUNT>& oscs,
-			 std::vector<std::shared_ptr<fmpire::Modulator>>& mods,
+			 std::vector<fmpire::Modulator*>& mods,
 			 VoiceEndedCallback* ended_cb) :
 	active(false),
 	oscillators(oscs),
@@ -293,7 +294,7 @@ void Voice::start(const size_t offset,
 	modulator_voices.resize(modulators.size());
 	for (size_t mod_idx = 0; mod_idx < modulators.size(); mod_idx++)
 	{
-		modulator_voices[mod_idx].init(modulators[mod_idx],
+		modulator_voices[mod_idx].init(*modulators[mod_idx],
 									   {oscillator_voices, modulator_voices},
 									   rate);
 		death_time =

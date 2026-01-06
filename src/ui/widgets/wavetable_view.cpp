@@ -3,8 +3,7 @@
 #include "draw_operations.h"
 #include "state_manager.h"
 #include "wavetable.h"
-
-#include <iostream>
+#include "wavetable_creator.h"
 
 namespace fmpire
 {
@@ -16,6 +15,7 @@ WavetableView::WavetableView(Widget* parent,
 	RelativeContainer(parent),
 	index(idx),
 	single(false),
+	wavetable_pos(0.0f),
 	wavetable(wt),
 	state_manager(state_mgr)
 {
@@ -66,29 +66,35 @@ void draw_waveform(const GraphicsContext& context,
 
 void WavetableView::onDisplay()
 {
+	clip();
+
 	const GraphicsContext& context = getGraphicsContext();
 	float radius = theme->corner_radius;
-	float line_width = theme->line_thin;
+	float line_width = theme->line_very_thin;
 
 
 	if (single)
 	{
-		float pos = 0;
-
 		theme->highlight.setFor(context);
-		draw_waveform(context, wavetable, pos, 0, 0, getWidth(), getHeight());
+		draw_waveform(context,
+					  wavetable,
+					  wavetable_pos,
+					  0,
+					  0,
+					  getWidth(),
+					  getHeight());
 	}
 	else
 	{
 		size_t w, h;
 		wavetable.get_size(w, h);
 
-		Color alpha_bg = theme->background;
-		alpha_bg.alpha = 0.1;
+		Color alpha_bg = theme->highlight;
+		alpha_bg.alpha = 0.5;
 		alpha_bg.setFor(context, true);
 		for (size_t pos = 0; pos < h; pos++)
 		{
-			float rel_pos = (float) pos / (h - 1);
+			float rel_pos = h > 1 ? (float) pos / (h - 1) : 0.0f;
 			float x = rel_pos * getWidth() * 0.3;
 			float y = (1 - rel_pos) * getHeight() * 0.5;
 			draw_waveform(context,
@@ -99,6 +105,15 @@ void WavetableView::onDisplay()
 						  getWidth() * 0.7,
 						  getHeight() * 0.5);
 		}
+
+		theme->highlight.setFor(context);
+		draw_waveform(context,
+					  wavetable,
+					  wavetable_pos,
+					  wavetable_pos * getWidth() * 0.3,
+					  (1 - wavetable_pos) * getHeight() * 0.5,
+					  getWidth() * 0.7,
+					  getHeight() * 0.5);
 	}
 
 	theme->background.setFor(context);
@@ -117,7 +132,7 @@ bool WavetableView::onMouse(const MouseEvent& event)
 	{
 		return true;
 	}
-	if (contains(event.pos) && event.button == 1 && event.press)
+	if (contains_clipped(event.pos) && event.button == 1 && event.press)
 	{
 		single = !single;
 		repaint();

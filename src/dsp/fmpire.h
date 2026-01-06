@@ -51,7 +51,7 @@ private:
 
 	std::array<Oscillator, FMPIRE_OSC_COUNT> oscillators;
 	std::array<Voice, FMPIRE_VOICE_COUNT> voices;
-	std::vector<std::shared_ptr<Modulator>> modulators;
+	std::vector<Modulator*> modulators;
 
 	std::array<Voice*, 128> voice_map;
 	std::queue<Voice*> free_voice_queue;

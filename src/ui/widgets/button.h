@@ -20,6 +20,12 @@ public:
 	void set_enabled(const bool enabled);
 	void set_pressed(const bool pressed);
 
+	inline void set_drawing_normal_bg(const bool draw)
+	{
+		is_drawing_normal_bg = draw;
+		repaint();
+	};
+
 	struct Callback
 	{
 		virtual void on_press(Button* const button) = 0;
@@ -45,6 +51,7 @@ protected:
 	bool is_toggle;
 	std::string text;
 	float text_y_scale;
+	bool is_drawing_normal_bg;
 	Callback* callback;
 };
 
