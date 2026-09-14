@@ -37,6 +37,21 @@ void WaveformPartEditor::on_selected(Selector* const selector,
 									 const int index,
 									 const std::string& option)
 {
+	if (selector == type_selector)
+	{
+		if (part && (int) part->get_type() != index)
+		{
+			Ref<WaveformPart> new_part =
+				WaveformPart::create((WaveformPart::Type) index);
+			new_part->set_start(part->get_start());
+			new_part->set_end(part->get_end());
+
+			if (callback)
+			{
+				callback->on_part_edited(this, new_part);
+			}
+		}
+	}
 }
 
 void WaveformPartEditor::on_value_changed(TextEntry* const text_entry,
@@ -68,7 +83,10 @@ void WaveformPartEditor::set_part(WaveformPart* const p)
 		type_selector->select((int) part->get_type());
 	}
 
-	if (part && part->get_type() == WaveformPart::Type::FUNCTION)
+	bool is_function = part && part->get_type() == WaveformPart::Type::FUNCTION;
+	function_editor->setVisible(is_function);
+
+	if (is_function)
 	{
 		Ref<FunctionWaveformPart> function =
 			static_ref_cast<FunctionWaveformPart>(part);

@@ -376,4 +376,31 @@ void WaveformEditor::on_waveform_updated(bool update_dsp)
 	spectrum_view->set_waveform(waveform);
 }
 
+void WaveformEditor::on_part_edited(WaveformPartEditor* const editor,
+								   WaveformPart* const new_part)
+{
+	if (!waveform)
+	{
+		return;
+	}
+
+	WaveformPart* old_part = selection;
+	if (old_part != new_part)
+	{
+		waveform->replace_part(old_part, new_part);
+		select(new_part, true);
+	}
+
+	on_waveform_updated(true);
+	repaint();
+}
+
+void WaveformEditor::on_harmonics_edited(HarmonicEditor* const editor,
+										 HarmonicsWaveformPart* const part)
+{
+	part->update();
+	on_waveform_updated(true);
+	repaint();
+}
+
 } // namespace fmpire

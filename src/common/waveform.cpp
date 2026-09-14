@@ -168,5 +168,19 @@ void Waveform::remove_part(const Ref<WaveformPart>& part)
 	}
 }
 
+void Waveform::replace_part(const Ref<WaveformPart>& old_part,
+						   const Ref<WaveformPart>& new_part)
+{
+	for (size_t i = 0; i < parts.size(); i++)
+	{
+		if (parts[i] == old_part)
+		{
+			new_part->set_width_and_index(width, index);
+			parts[i] = new_part;
+			return;
+		}
+	}
+}
+
 
 } // namespace fmpire

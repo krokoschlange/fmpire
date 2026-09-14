@@ -98,7 +98,7 @@ SamplesWaveformPart::~SamplesWaveformPart() noexcept
 
 float SamplesWaveformPart::sample(size_t position) const
 {
-	if (position < start || position >= end)
+	if (position < start || position >= end || samples.empty())
 	{
 		return 0;
 	}
@@ -214,7 +214,7 @@ HarmonicsWaveformPart::~HarmonicsWaveformPart() noexcept
 
 float HarmonicsWaveformPart::sample(size_t position) const
 {
-	if (position < start || position >= end)
+	if (position < start || position >= end || samples.empty())
 	{
 		return 0;
 	}

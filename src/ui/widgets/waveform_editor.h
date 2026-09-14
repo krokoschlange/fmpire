@@ -10,6 +10,9 @@
 #include "waveform_tools.h"
 #include "Widget.hpp"
 
+#include "harmonic_editor.h"
+#include "waveform_part_editor.h"
+
 namespace fmpire
 {
 class HarmonicEditor;
@@ -18,7 +21,11 @@ class Waveform;
 class WaveformTool;
 class WaveformPart;
 
-class WaveformEditor : public FMpireWidget, public Button::Callback
+class WaveformEditor :
+	public FMpireWidget,
+	public Button::Callback,
+	public WaveformPartEditor::Callback,
+	public HarmonicEditor::Callback
 {
 public:
 	WaveformEditor(Widget* parent,
@@ -40,6 +47,8 @@ public:
 		repaint();
 	}
 
+	Waveform* get_waveform() const { return waveform; }
+
 	void select_tool(WaveformToolType tool) { selected_tool = tool; };
 
 	void set_osc_index(uint32_t idx) { osc_index = idx; }
@@ -58,6 +67,13 @@ public:
 	WaveformPart* get_selected_part() const { return selection; }
 
 	void select(WaveformPart* part, bool trigger_callback = false);
+
+	virtual void on_part_edited(WaveformPartEditor* const editor,
+								WaveformPart* const part) override;
+
+	virtual void on_harmonics_edited(
+		HarmonicEditor* const editor,
+		HarmonicsWaveformPart* const part) override;
 
 	struct Callback
 	{

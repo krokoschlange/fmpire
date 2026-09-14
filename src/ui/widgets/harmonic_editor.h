@@ -19,6 +19,16 @@ public:
 		repaint();
 	}
 
+	HarmonicsWaveformPart* get_part() const { return part; }
+
+	struct Callback
+	{
+		virtual void on_harmonics_edited(HarmonicEditor* const editor,
+										 HarmonicsWaveformPart* const part) = 0;
+	};
+
+	void set_callback(Callback* const cb) { callback = cb; }
+
 	static constexpr float box_width = 20.0f;
 
 protected:
@@ -29,6 +39,9 @@ protected:
 
 private:
 	Ref<HarmonicsWaveformPart> part;
+	Callback* callback;
+
+	bool is_pressed;
 };
 
 } // namespace fmpire

@@ -37,6 +37,8 @@ public:
 	void remove_part(size_t index);
 
 	void remove_part(const Ref<WaveformPart>& part);
+	void replace_part(const Ref<WaveformPart>& old_part,
+					  const Ref<WaveformPart>& new_part);
 
 	inline uint32_t get_width() const { return width; }
 

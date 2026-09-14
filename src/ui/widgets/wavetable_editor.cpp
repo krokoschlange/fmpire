@@ -61,6 +61,7 @@ WavetableEditor::WavetableEditor(Widget* parent, StateManager& state_mgr) :
 	put(part_selector, 3, 0, 1, 2);
 
 	part_editor = new WaveformPartEditor(this);
+	part_editor->set_callback(waveform_editor);
 	put(part_editor, 4, 0, 1, 2);
 
 	waveform_scoll = new ScrollContainer(this);
@@ -103,6 +104,7 @@ WavetableEditor::WavetableEditor(Widget* parent, StateManager& state_mgr) :
 	harmonic_scroll->set_scroll_mode(ScrollContainer::HORIZONTAL);
 
 	harmonic_editor = new HarmonicEditor(harmonic_scroll);
+	harmonic_editor->set_callback(waveform_editor);
 
 	put(harmonic_scroll, 5, 2);
 
@@ -259,6 +261,15 @@ void WavetableEditor::on_waveform_part_selected(WaveformEditor* const editor,
 	}
 	part_selector->set_value(part_idx);
 	part_editor->set_part(part);
+
+	if (part && part->get_type() == WaveformPart::Type::HARMONIC)
+	{
+		harmonic_editor->set_part((HarmonicsWaveformPart*) part);
+	}
+	else
+	{
+		harmonic_editor->set_part(nullptr);
+	}
 }
 
 void WavetableEditor::on_waveform_edited(WaveformEditor* const editor,
