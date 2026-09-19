@@ -71,9 +71,9 @@ public:
 	virtual void on_part_edited(WaveformPartEditor* const editor,
 								WaveformPart* const part) override;
 
-	virtual void on_harmonics_edited(
-		HarmonicEditor* const editor,
-		HarmonicsWaveformPart* const part) override;
+	virtual void on_harmonics_edited(HarmonicEditor* const editor,
+									 HarmonicsWaveformPart* const part,
+									 const bool is_done) override;
 
 	struct Callback
 	{
@@ -115,7 +115,7 @@ private:
 	Callback* callback;
 
 	void update_delete_button();
-	void on_waveform_updated(bool update_dsp);
+	void on_waveform_updated(bool update_dsp, bool notify_callback = true);
 };
 
 

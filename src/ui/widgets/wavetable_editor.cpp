@@ -10,9 +10,13 @@
 #include "state_manager.h"
 #include "utils.h"
 #include "waveform_editor.h"
+#include "waveform_part.h"
 #include "waveform_selector.h"
 #include "waveform_tools.h"
 #include "wavetable_creator.h"
+
+#include <algorithm>
+#include <sndfile.h>
 
 namespace fmpire
 {
@@ -31,6 +35,7 @@ WavetableEditor::WavetableEditor(Widget* parent, StateManager& state_mgr) :
 	add_row(1, 0, 0, 25, 0);
 	add_row(2, 0, 0, 25, 0);
 	add_row(12, 0, 0, 100, 0);
+	add_row(1, 0, 0, 36, 0);  // grid-config toolbar, between canvas and harmonic editor
 	add_row(8, 0, 0, 50, 0);
 	add_row(2, 0, 0, 50, 0);
 
@@ -39,13 +44,71 @@ WavetableEditor::WavetableEditor(Widget* parent, StateManager& state_mgr) :
 	add_column(12, 0, 0, 100, 0);
 	add_column(4, 0, 0, 50, 0);
 
-	oscillator_selector = new IntEditor(this);
+	left_column = new GridContainer(this);
+	left_column->add_row(1, 0, 0, 40, 0);   // oscillator selector
+	left_column->add_row(1, 0, 0, 70, 0);   // tools panel
+	left_column->add_row(1, 0, 0, 90, 0);   // part panel
+	left_column->add_row(1, 0, 0, 190, 0);  // bulk-ops panel
+	left_column->add_row(20, 0, 0, 0, 0);   // spacer
+	left_column->add_column(1, 0, 0, 0, 0);
+	put(left_column, 0, 0, 8, 2);
+
+	oscillator_selector = new IntEditor(left_column);
 	oscillator_selector->set_limits(1, FMPIRE_OSC_COUNT);
 	oscillator_selector->set_default_value(1);
 	oscillator_selector->set_label("OSC");
+	oscillator_selector->set_label_position(IntEditor::LabelPosition::LEFT);
 	oscillator_selector->set_tooltip("Oscillator");
 	oscillator_selector->set_callback(this);
-	put(oscillator_selector, 0, 0, 1, 2);
+	left_column->put(oscillator_selector, 0, 0);
+
+	tools_panel_border = new Border(left_column);
+	tools_panel_grid = new GridContainer(tools_panel_border);
+	tools_panel_grid->add_row(2, 0, 0, 30, 0);
+	tools_panel_grid->add_row(1, 0, 0, 28, 36);
+	tools_panel_grid->add_column(1, 0, 0, 0, 0);
+	tools_panel_grid->add_column(1, 0, 0, 0, 0);
+	left_column->put(tools_panel_border, 1, 0);
+
+	tool_selector = new Selector(tools_panel_grid);
+	tool_selector->add_option("Free");
+	tool_selector->add_option("Line");
+	tool_selector->add_option("Half Sine");
+	tool_selector->add_option("Quarter Sine");
+	tool_selector->set_callback(this);
+	tools_panel_grid->put(tool_selector, 0, 0, 1, 2);
+
+	undo_button = new Button(tools_panel_grid);
+	undo_button->set_text("Undo");
+	undo_button->set_callback(this);
+	tools_panel_grid->put(undo_button, 1, 0);
+
+	redo_button = new Button(tools_panel_grid);
+	redo_button->set_text("Redo");
+	redo_button->set_callback(this);
+	tools_panel_grid->put(redo_button, 1, 1);
+
+	part_panel_border = new Border(left_column);
+	part_panel_grid = new GridContainer(part_panel_border);
+	part_panel_grid->add_row(1, 0, 0, 30, 0);
+	part_panel_grid->add_row(2, 0, 0, 50, 0);
+	part_panel_grid->add_column(1, 0, 0, 0, 0);
+	left_column->put(part_panel_border, 2, 0);
+
+	part_selector = new IntEditor(part_panel_grid);
+	part_selector->set_limits(-1, std::numeric_limits<int>::max());
+	part_selector->set_label("Part #");
+	part_selector->set_label_position(IntEditor::LabelPosition::LEFT);
+	part_selector->set_callback(this);
+	part_panel_grid->put(part_selector, 0, 0);
+
+	part_editor = new WaveformPartEditor(part_panel_grid);
+	part_panel_grid->put(part_editor, 1, 0);
+
+	bulk_panel_border = new Border(left_column);
+	bulk_editor = new WaveformBulkEditor(bulk_panel_border, state_mgr);
+	bulk_editor->set_callback(this);
+	left_column->put(bulk_panel_border, 3, 0);
 
 	spectrum_view = new SpectrumView(this);
 	put(spectrum_view, 0, 2, 2, 1);
@@ -54,15 +117,8 @@ WavetableEditor::WavetableEditor(Widget* parent, StateManager& state_mgr) :
 	waveform_editor->set_callback(this);
 	put(waveform_editor, 2, 2, 3, 1);
 
-	part_selector = new IntEditor(this);
-	part_selector->set_limits(-1, std::numeric_limits<int>::max());
-	part_selector->set_label("Part #");
-	part_selector->set_callback(this);
-	put(part_selector, 3, 0, 1, 2);
-
-	part_editor = new WaveformPartEditor(this);
 	part_editor->set_callback(waveform_editor);
-	put(part_editor, 4, 0, 1, 2);
+	tool_selector->select(0, true);
 
 	waveform_scoll = new ScrollContainer(this);
 	waveform_scoll->set_scroll_mode(ScrollContainer::VERTICAL);
@@ -70,35 +126,35 @@ WavetableEditor::WavetableEditor(Widget* parent, StateManager& state_mgr) :
 	waveform_selector = new WaveformSelector(waveform_scoll);
 	waveform_selector->set_callback(this);
 
-	put(waveform_scoll, 0, 3, 6, 1);
+	put(waveform_scoll, 0, 3, 7, 1);
 
 	waveform_add_button = new Button(this);
 	waveform_add_button->set_text("+");
 	waveform_add_button->set_callback(this);
-	put(waveform_add_button, 6, 3);
+	put(waveform_add_button, 7, 3);
 
-	tool_selector = new Selector(this);
-	tool_selector->add_option("Free");
-	tool_selector->add_option("Line");
-	tool_selector->add_option("Half Sine");
-	tool_selector->add_option("Quarter Sine");
-	tool_selector->set_callback(this);
-	put(tool_selector, 1, 0, 1, 2);
-	tool_selector->select(0, true);
+	grid_toolbar_border = new Border(this);
+	grid_toolbar_grid = new GridContainer(grid_toolbar_border);
+	grid_toolbar_grid->add_row(1, 0, 0, 0, 0);
+	grid_toolbar_grid->add_column(1, 0, 0, 0, 0);
+	grid_toolbar_grid->add_column(1, 0, 0, 0, 0);
+	put(grid_toolbar_border, 5, 2);
 
-	grid_x_editor = new IntEditor(this);
+	grid_x_editor = new IntEditor(grid_toolbar_grid);
 	grid_x_editor->set_default_value(0);
 	grid_x_editor->set_limits(0, std::numeric_limits<int>::max());
 	grid_x_editor->set_callback(this);
 	grid_x_editor->set_label("Grid X");
-	put(grid_x_editor, 2, 0);
+	grid_x_editor->set_label_position(IntEditor::LabelPosition::LEFT);
+	grid_toolbar_grid->put(grid_x_editor, 0, 0);
 
-	grid_y_editor = new IntEditor(this);
+	grid_y_editor = new IntEditor(grid_toolbar_grid);
 	grid_y_editor->set_default_value(0);
 	grid_y_editor->set_limits(0, std::numeric_limits<int>::max());
 	grid_y_editor->set_callback(this);
 	grid_y_editor->set_label("Grid Y");
-	put(grid_y_editor, 2, 1);
+	grid_y_editor->set_label_position(IntEditor::LabelPosition::LEFT);
+	grid_toolbar_grid->put(grid_y_editor, 0, 1);
 
 	harmonic_scroll = new ScrollContainer(this);
 	harmonic_scroll->set_scroll_mode(ScrollContainer::HORIZONTAL);
@@ -106,7 +162,7 @@ WavetableEditor::WavetableEditor(Widget* parent, StateManager& state_mgr) :
 	harmonic_editor = new HarmonicEditor(harmonic_scroll);
 	harmonic_editor->set_callback(waveform_editor);
 
-	put(harmonic_scroll, 5, 2);
+	put(harmonic_scroll, 6, 2);
 
 	select_oscillator(0);
 }
@@ -120,10 +176,17 @@ void WavetableEditor::select_oscillator(const size_t osc)
 	selected_oscillator = osc;
 	oscillator_selector->set_value(osc + 1);
 	wavetable = state_manager.get_wavetable_creator(osc);
+	waveform_selector->set_wavetable(state_manager.get_wavetable(osc));
 	waveform_editor->set_osc_index(osc);
 	waveform_editor->set_waveform(wavetable->get_waveform(0));
 	spectrum_view->set_waveform(wavetable->get_waveform(0));
-	waveform_selector->set_wavetable(state_manager.get_wavetable(osc));
+
+	if (wavetable && history[osc].is_empty())
+	{
+		history[osc].reset(wavetable->get_state());
+	}
+	update_undo_redo_buttons();
+
 	repaint();
 }
 
@@ -184,8 +247,18 @@ void WavetableEditor::on_press(Button* const button)
 
 			waveform_selector->select_waveform(height);
 
+			push_history();
+
 			repaint();
 		}
+	}
+	else if (button == undo_button)
+	{
+		undo();
+	}
+	else if (button == redo_button)
+	{
+		redo();
 	}
 }
 
@@ -221,6 +294,8 @@ void WavetableEditor::on_waveform_moved(WaveformSelector* const selector,
 								+ "/" KEY_OSC_WAVETABLE KEY_WT_INSERT,
 							state);
 
+	push_history();
+
 	repaint();
 }
 
@@ -236,6 +311,8 @@ void WavetableEditor::remove_waveform(WaveformSelector* const selector,
 	state_manager.set_state(KEY_OSC_PREFIX + std::to_string(selected_oscillator)
 								+ "/" KEY_OSC_WAVETABLE KEY_WT_REMOVE,
 							state);
+
+	push_history();
 
 	repaint();
 }
@@ -276,6 +353,337 @@ void WavetableEditor::on_waveform_edited(WaveformEditor* const editor,
 										 Waveform* const wf,
 										 const bool is_done)
 {
+	if (is_done)
+	{
+		push_history();
+	}
+}
+
+void WavetableEditor::undo()
+{
+	if (!wavetable || !history[selected_oscillator].undo_possible())
+	{
+		return;
+	}
+	apply_history_snapshot(history[selected_oscillator].undo());
+}
+
+void WavetableEditor::redo()
+{
+	if (!wavetable || !history[selected_oscillator].redo_possible())
+	{
+		return;
+	}
+	apply_history_snapshot(history[selected_oscillator].redo());
+}
+
+void WavetableEditor::push_history()
+{
+	if (!wavetable)
+	{
+		return;
+	}
+	history[selected_oscillator].push(wavetable->get_state());
+	update_undo_redo_buttons();
+}
+
+void WavetableEditor::apply_state(const std::string& snapshot)
+{
+	std::string_view view = snapshot;
+	wavetable->set_state(KEY_WT_ALL, view);
+
+	state_manager.set_state(KEY_OSC_PREFIX + std::to_string(selected_oscillator)
+								+ "/" KEY_OSC_WAVETABLE KEY_WT_ALL,
+							snapshot);
+	state_manager.on_wavetable_edited(selected_oscillator);
+}
+
+void WavetableEditor::refresh_editor_view()
+{
+	int part_idx = part_selector->get_value();
+
+	waveform_selector->select_waveform(waveform_selector->get_selected());
+
+	Waveform* wf = wavetable->get_waveform(waveform_selector->get_selected());
+	waveform_editor->set_waveform(wf);
+	spectrum_view->set_waveform(wf);
+
+	WaveformPart* part =
+		(wf && part_idx >= 0) ? wf->get_part_by_idx(part_idx) : nullptr;
+	waveform_editor->select(part, true);
+
+	repaint();
+}
+
+void WavetableEditor::apply_history_snapshot(const std::string& snapshot)
+{
+	apply_state(snapshot);
+	refresh_editor_view();
+	update_undo_redo_buttons();
+}
+
+void WavetableEditor::update_undo_redo_buttons()
+{
+	undo_button->set_enabled(history[selected_oscillator].undo_possible());
+	redo_button->set_enabled(history[selected_oscillator].redo_possible());
+}
+
+void WavetableEditor::apply_bulk_insert(
+	uint32_t start,
+	const std::vector<Ref<Waveform>>& new_waveforms)
+{
+	if (!wavetable || new_waveforms.empty())
+	{
+		return;
+	}
+
+	uint32_t width, height;
+	wavetable->get_size(width, height);
+	start = std::min(start, height);
+
+	for (size_t i = 0; i < new_waveforms.size(); i++)
+	{
+		wavetable->insert_waveform(start + i, new_waveforms[i]);
+	}
+	wavetable->update();
+
+	apply_state(wavetable->get_state());
+	refresh_editor_view();
+	push_history();
+}
+
+void WavetableEditor::on_bulk_math(uint32_t start,
+								   uint32_t amount,
+								   const std::string& function)
+{
+	if (!wavetable || amount == 0)
+	{
+		return;
+	}
+
+	uint32_t width, height;
+	wavetable->get_size(width, height);
+
+	std::vector<Ref<Waveform>> new_waveforms;
+	for (uint32_t i = 0; i < amount; i++)
+	{
+		Ref<Waveform> wf = new Waveform();
+		wf->remove_part(0);
+
+		Ref<FunctionWaveformPart> part = static_cast<FunctionWaveformPart*>(
+			WaveformPart::create(WaveformPart::Type::FUNCTION));
+		part->set_start(0);
+		part->set_end(width);
+		part->set_function(function);
+
+		wf->insert_part(part);
+		new_waveforms.push_back(wf);
+	}
+
+	apply_bulk_insert(start, new_waveforms);
+}
+
+void WavetableEditor::on_bulk_wav(uint32_t start,
+								  int amount,
+								  int width_arg,
+								  const std::string& filepath)
+{
+	if (!wavetable)
+	{
+		return;
+	}
+
+	SF_INFO info = {};
+	SNDFILE* file = sf_open(filepath.c_str(), SFM_READ, &info);
+	if (!file)
+	{
+		return;
+	}
+
+	std::vector<float> samples((size_t) info.frames * info.channels);
+	sf_readf_float(file, samples.data(), info.frames);
+	sf_close(file);
+
+	uint32_t width, height;
+	wavetable->get_size(width, height);
+
+	int samples_per_wf;
+	uint32_t frame_count;
+	if (amount > 0)
+	{
+		samples_per_wf = (int) ((float) info.frames / amount);
+		frame_count = amount;
+	}
+	else
+	{
+		samples_per_wf = width_arg > 0 ? width_arg : (int) width;
+		frame_count = samples_per_wf > 0 ? info.frames / samples_per_wf : 0;
+	}
+
+	if (frame_count == 0 || samples_per_wf <= 0)
+	{
+		return;
+	}
+
+	std::vector<Ref<Waveform>> new_waveforms;
+	for (uint32_t i = 0; i < frame_count; i++)
+	{
+		std::vector<float> wf_samples(width, 0.0f);
+		for (uint32_t smpl = 0; smpl < width; smpl++)
+		{
+			float rel_pos = (float) smpl / width;
+			float orig_pos = rel_pos * samples_per_wf;
+			int total_pos = ((int) orig_pos + samples_per_wf * (int) i) * info.channels;
+			total_pos =
+				std::min<int>(total_pos, info.channels * info.frames - 1);
+			float smpl1 = samples[total_pos];
+			total_pos =
+				std::min<int>(total_pos + 1, info.channels * info.frames - 1);
+			float smpl2 = samples[total_pos];
+			wf_samples[smpl] =
+				smpl1 + (orig_pos - (int) orig_pos) * (smpl2 - smpl1);
+		}
+
+		Ref<Waveform> wf = new Waveform();
+		wf->remove_part(0);
+
+		Ref<SamplesWaveformPart> part = static_cast<SamplesWaveformPart*>(
+			WaveformPart::create(WaveformPart::Type::SAMPLES));
+		part->set_start(0);
+		part->set_end(width);
+		part->get_samples() = wf_samples;
+
+		wf->insert_part(part);
+		new_waveforms.push_back(wf);
+	}
+
+	apply_bulk_insert(start, new_waveforms);
+}
+
+void WavetableEditor::on_bulk_crossfade(uint32_t start, uint32_t amount)
+{
+	if (!wavetable || amount == 0)
+	{
+		return;
+	}
+
+	uint32_t width, height;
+	wavetable->get_size(width, height);
+	if (height < 2 || start == 0 || start > height - 1)
+	{
+		return;
+	}
+
+	std::vector<float> samples_before =
+		wavetable->get_waveform(start - 1)->sample_all();
+	std::vector<float> samples_after = wavetable->get_waveform(start)->sample_all();
+
+	std::vector<Ref<Waveform>> new_waveforms;
+	for (uint32_t i = 1; i <= amount; i++)
+	{
+		float t = (float) i / (amount + 1);
+
+		std::vector<float> mixed(width);
+		for (uint32_t smpl = 0; smpl < width; smpl++)
+		{
+			mixed[smpl] = lerp(samples_before[smpl], samples_after[smpl], t);
+		}
+
+		Ref<Waveform> wf = new Waveform();
+		wf->remove_part(0);
+
+		Ref<SamplesWaveformPart> part = static_cast<SamplesWaveformPart*>(
+			WaveformPart::create(WaveformPart::Type::SAMPLES));
+		part->set_start(0);
+		part->set_end(width);
+		part->get_samples() = mixed;
+
+		wf->insert_part(part);
+		new_waveforms.push_back(wf);
+	}
+
+	apply_bulk_insert(start, new_waveforms);
+}
+
+void WavetableEditor::on_bulk_spectral(uint32_t start,
+									   uint32_t amount,
+									   bool zero_all,
+									   bool zero_fundamental)
+{
+	if (!wavetable || amount == 0)
+	{
+		return;
+	}
+
+	uint32_t width, height;
+	wavetable->get_size(width, height);
+	if (height < 2 || start == 0 || start > height - 1)
+	{
+		return;
+	}
+
+	std::vector<HarmonicsWaveformPart::Harmonic> harmonics_before =
+		analyze_harmonics(wavetable->get_waveform(start - 1)->sample_all(), true);
+	std::vector<HarmonicsWaveformPart::Harmonic> harmonics_after =
+		analyze_harmonics(wavetable->get_waveform(start)->sample_all(), true);
+
+	size_t harmonic_count =
+		std::max(harmonics_before.size(), harmonics_after.size());
+	harmonics_before.resize(harmonic_count, {0.0f, 0.0f});
+	harmonics_after.resize(harmonic_count, {0.0f, 0.0f});
+
+	if (zero_all)
+	{
+		for (auto& h : harmonics_before)
+		{
+			h.phase = 0.0f;
+		}
+		for (auto& h : harmonics_after)
+		{
+			h.phase = 0.0f;
+		}
+	}
+	else if (zero_fundamental)
+	{
+		if (harmonics_before.size() > 1)
+		{
+			harmonics_before[1].phase = 0.0f;
+		}
+		if (harmonics_after.size() > 1)
+		{
+			harmonics_after[1].phase = 0.0f;
+		}
+	}
+
+	std::vector<Ref<Waveform>> new_waveforms;
+	for (uint32_t i = 1; i <= amount; i++)
+	{
+		float t = (float) i / (amount + 1);
+
+		std::vector<HarmonicsWaveformPart::Harmonic> mixed(harmonic_count);
+		for (size_t harm = 0; harm < harmonic_count; harm++)
+		{
+			mixed[harm].amplitude = lerp(harmonics_before[harm].amplitude,
+										 harmonics_after[harm].amplitude,
+										 t);
+			mixed[harm].phase =
+				lerp(harmonics_before[harm].phase, harmonics_after[harm].phase, t);
+		}
+
+		Ref<Waveform> wf = new Waveform();
+		wf->remove_part(0);
+
+		Ref<HarmonicsWaveformPart> part = static_cast<HarmonicsWaveformPart*>(
+			WaveformPart::create(WaveformPart::Type::HARMONIC));
+		part->set_start(0);
+		part->set_end(width);
+		part->get_harmonics() = mixed;
+
+		wf->insert_part(part);
+		new_waveforms.push_back(wf);
+	}
+
+	apply_bulk_insert(start, new_waveforms);
 }
 
 void WavetableEditor::onDisplay()

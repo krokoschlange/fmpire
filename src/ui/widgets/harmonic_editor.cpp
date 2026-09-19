@@ -1,5 +1,6 @@
 #include "harmonic_editor.h"
 #include "Base.hpp"
+#include "double_click.h"
 #include "draw_operations.h"
 #include "waveform_part.h"
 
@@ -9,7 +10,8 @@ namespace fmpire
 HarmonicEditor::HarmonicEditor(Widget* parent) :
 	FMpireWidget(parent),
 	callback(nullptr),
-	is_pressed(false)
+	is_pressed(false),
+	dragging_phase(false)
 {
 }
 
@@ -86,6 +88,39 @@ void HarmonicEditor::onDisplay()
 	}
 }
 
+void HarmonicEditor::apply_drag_position(const Point<double>& pos)
+{
+	int harmonic_idx = (int) (pos.getX() / box_width);
+	if (harmonic_idx < 0 || harmonic_idx >= (int) part->get_harmonics().size())
+	{
+		return;
+	}
+
+	float h = getHeight();
+	float amp_h = h * 0.8f;
+	float y = pos.getY();
+
+	if (!dragging_phase)
+	{
+		y = std::clamp(y, 0.0f, amp_h);
+		float amp = 1.0f - (y / amp_h);
+		part->get_harmonics()[harmonic_idx].amplitude =
+			std::clamp(amp, 0.0f, 1.0f);
+	}
+	else
+	{
+		y = std::clamp(y, amp_h, h);
+		float phase = 1.0f - ((y - amp_h) / (h - amp_h));
+		part->get_harmonics()[harmonic_idx].phase = std::clamp(phase, 0.0f, 1.0f);
+	}
+
+	if (callback)
+	{
+		callback->on_harmonics_edited(this, part, false);
+	}
+	repaint();
+}
+
 bool HarmonicEditor::onMouse(const MouseEvent& event)
 {
 	if (part == nullptr)
@@ -94,37 +129,75 @@ bool HarmonicEditor::onMouse(const MouseEvent& event)
 	}
 	if (event.button == 1 && event.press && contains_clipped(event.pos))
 	{
-		is_pressed = true;
 		int harmonic_idx = (int) (event.pos.getX() / box_width);
-		if (harmonic_idx >= 0
-			&& harmonic_idx < (int) part->get_harmonics().size())
+		if (harmonic_idx < 0
+			|| harmonic_idx >= (int) part->get_harmonics().size())
 		{
-			float h = getHeight();
-			float amp_h = h * 0.8f;
-			if (event.pos.getY() < amp_h)
+			return true;
+		}
+
+		float h = getHeight();
+		float amp_h = h * 0.8f;
+		dragging_phase = event.pos.getY() >= amp_h;
+
+		if (DoubleClick::is_double_click(event.button, event.time))
+		{
+			is_pressed = false;
+
+			HarmonicsWaveformPart::Harmonic& harmonic =
+				part->get_harmonics()[harmonic_idx];
+			if (dragging_phase)
 			{
-				float amp = 1.0f - (event.pos.getY() / amp_h);
-				part->get_harmonics()[harmonic_idx].amplitude =
-					std::clamp(amp, 0.0f, 1.0f);
+				if (stored_phase.size() != part->get_harmonics().size())
+				{
+					stored_phase.resize(part->get_harmonics().size(), 0.0f);
+				}
+				if (harmonic.phase != 0.0f)
+				{
+					stored_phase[harmonic_idx] = harmonic.phase;
+					harmonic.phase = 0.0f;
+				}
+				else
+				{
+					harmonic.phase = stored_phase[harmonic_idx];
+				}
 			}
 			else
 			{
-				float phase = 1.0f - ((event.pos.getY() - amp_h) / (h - amp_h));
-				part->get_harmonics()[harmonic_idx].phase =
-					std::clamp(phase, 0.0f, 1.0f);
+				if (stored_amplitude.size() != part->get_harmonics().size())
+				{
+					stored_amplitude.resize(part->get_harmonics().size(), 0.0f);
+				}
+				if (harmonic.amplitude != 0.0f)
+				{
+					stored_amplitude[harmonic_idx] = harmonic.amplitude;
+					harmonic.amplitude = 0.0f;
+				}
+				else
+				{
+					harmonic.amplitude = stored_amplitude[harmonic_idx];
+				}
 			}
 
 			if (callback)
 			{
-				callback->on_harmonics_edited(this, part);
+				callback->on_harmonics_edited(this, part, true);
 			}
 			repaint();
+			return true;
 		}
+
+		is_pressed = true;
+		apply_drag_position(event.pos);
 		return true;
 	}
 	else if (event.button == 1 && !event.press && is_pressed)
 	{
 		is_pressed = false;
+		if (callback && part)
+		{
+			callback->on_harmonics_edited(this, part, true);
+		}
 		return true;
 	}
 	return false;
@@ -141,32 +214,8 @@ bool HarmonicEditor::onMotion(const MotionEvent& event)
 		return false;
 	}
 
-	int harmonic_idx = (int) (event.pos.getX() / box_width);
-	if (harmonic_idx >= 0 && harmonic_idx < (int) part->get_harmonics().size())
-	{
-		float h = getHeight();
-		float amp_h = h * 0.8f;
-		if (event.pos.getY() < amp_h)
-		{
-			float amp = 1.0f - (event.pos.getY() / amp_h);
-			part->get_harmonics()[harmonic_idx].amplitude =
-				std::clamp(amp, 0.0f, 1.0f);
-		}
-		else
-		{
-			float phase = 1.0f - ((event.pos.getY() - amp_h) / (h - amp_h));
-			part->get_harmonics()[harmonic_idx].phase =
-				std::clamp(phase, 0.0f, 1.0f);
-		}
-
-		if (callback)
-		{
-			callback->on_harmonics_edited(this, part);
-		}
-		repaint();
-		return true;
-	}
-	return false;
+	apply_drag_position(event.pos);
+	return true;
 }
 
 } // namespace fmpire

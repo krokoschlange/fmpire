@@ -5,6 +5,7 @@
 #include "wavetable.h"
 
 #define WAVEFORM_BOX_HEIGHT 40
+#define WAVEFORM_DRAG_THRESHOLD 5
 
 namespace fmpire
 {
@@ -25,6 +26,7 @@ WaveformSelector::~WaveformSelector() noexcept
 void WaveformSelector::set_wavetable(Wavetable* const wt)
 {
 	wavetable = wt;
+	selected = 0;
 	repaint();
 }
 
@@ -181,6 +183,7 @@ bool WaveformSelector::onMouse(const MouseEvent& event)
 		float box_size = WAVEFORM_BOX_HEIGHT;
 		select_waveform(y / box_size);
 		dragging = -1;
+		last_mouse_pos = event.pos;
 		return true;
 	}
 	if (!event.press)
@@ -208,10 +211,18 @@ bool WaveformSelector::onMotion(const MotionEvent& event)
 {
 	if (dragging == -1)
 	{
+		float dx = event.pos.getX() - last_mouse_pos.getX();
+		float dy = event.pos.getY() - last_mouse_pos.getY();
+		if (dx * dx + dy * dy < WAVEFORM_DRAG_THRESHOLD * WAVEFORM_DRAG_THRESHOLD)
+		{
+			return FMpireWidget::onMotion(event);
+		}
+
 		dragging = selected;
 		drag_and_drop =
 			new WaveformDragAndDrop(getTopLevelWidget(), wavetable, selected);
 		drag_and_drop->setSize(getWidth(), WAVEFORM_BOX_HEIGHT);
+		drag_and_drop->update_position(event.absolutePos);
 	}
 	else if (dragging >= 0)
 	{
@@ -356,21 +367,26 @@ void WaveformDragAndDrop::onDisplay()
 
 bool WaveformDragAndDrop::onMotion(const MotionEvent& event)
 {
+	update_position(event.absolutePos);
+
+	return false;
+}
+
+void WaveformDragAndDrop::update_position(Point<double> absolutePos)
+{
 	uint32_t window_width = getWindow().getWidth();
 	uint32_t window_height = getWindow().getHeight();
 
-	float pos_x = event.absolutePos.getX() + 5;
+	float pos_x = absolutePos.getX() + 5;
 	if (pos_x + getWidth() > window_width)
 	{
-		pos_x = event.absolutePos.getX() - 5 - getWidth();
+		pos_x = absolutePos.getX() - 5 - getWidth();
 	}
 
 	float pos_y =
-		std::min<float>(event.absolutePos.getY(), window_height - getHeight());
+		std::min<float>(absolutePos.getY(), window_height - getHeight());
 
 	setAbsolutePos(pos_x, pos_y);
-
-	return false;
 }
 
 } // namespace fmpire

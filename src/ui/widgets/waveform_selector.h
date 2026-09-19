@@ -74,6 +74,8 @@ public:
 	WaveformDragAndDrop(Widget* parent, Wavetable* wt, uint32_t idx);
 	virtual ~WaveformDragAndDrop() noexcept;
 
+	void update_position(Point<double> absolutePos);
+
 protected:
 	virtual void onDisplay() override;
 	virtual bool onMotion(const MotionEvent& event) override;

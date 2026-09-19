@@ -9,6 +9,12 @@ namespace fmpire
 class IntEditor : public FMpireWidget
 {
 public:
+	enum class LabelPosition
+	{
+		BELOW,
+		LEFT,
+	};
+
 	IntEditor(Widget* parent);
 	virtual ~IntEditor() noexcept;
 
@@ -18,6 +24,8 @@ public:
 
 	void set_tooltip(const std::string& text);
 	void set_label(const std::string& text);
+	void set_label_position(const LabelPosition position,
+							const float proportion = 0.0f);
 
 	int get_value() const { return value; }
 
@@ -33,6 +41,10 @@ protected:
 	void onDisplay() override;
 	bool onMouse(const MouseEvent& event) override;
 	bool onMotion(const MotionEvent& event) override;
+	bool onCharacterInput(const CharacterInputEvent& event) override;
+	bool onKeyboard(const KeyboardEvent& event) override;
+
+	void on_focus_lost() override;
 
 private:
 	int value;
@@ -42,8 +54,10 @@ private:
 	int max_value;
 
 	bool dragging;
+	bool drag_moved;
 	float scroll_value;
 	float scroll_speed;
+	Point<double> press_mouse_pos;
 	Point<double> last_mouse_pos;
 
 	enum class MouseState
@@ -56,8 +70,24 @@ private:
 	MouseState hover_state;
 	MouseState press_state;
 
+	MouseState get_zone(const double x) const;
+	float get_box_left() const;
+	void update_left_label_metrics(const GraphicsContext& context);
+
+	void begin_edit();
+	void commit_edit();
+	void cancel_edit();
+
+	bool editing;
+	bool edit_replaces_text;
+	std::string edit_text;
+
 	std::string tooltip;
 	std::string label;
+	LabelPosition label_position;
+	float label_proportion;
+	float left_label_width;
+	float left_label_size;
 
 	Callback* callback;
 };

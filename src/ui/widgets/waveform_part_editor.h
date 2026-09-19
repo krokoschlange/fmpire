@@ -38,6 +38,7 @@ public:
 private:
 	Ref<Selector> type_selector;
 	Ref<TextEntry> function_editor;
+	Ref<Selector> harmonic_type_selector;
 
 	Ref<WaveformPart> part;
 

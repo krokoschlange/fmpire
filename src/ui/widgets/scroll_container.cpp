@@ -1,5 +1,6 @@
 #include "scroll_container.h"
 #include "draw_operations.h"
+#include <algorithm>
 #include <cstdlib>
 
 namespace fmpire
@@ -228,6 +229,7 @@ bool ScrollContainer::onMotion(const MotionEvent& event)
 			vertical_scroll = drag_scroll_start + scroll_delta;
 			vertical_scroll = std::min(std::max(0.0f, vertical_scroll),
 									   scroll_height - bar_height);
+			update_child_position();
 			repaint();
 			return true;
 		}
@@ -256,6 +258,7 @@ bool ScrollContainer::onMotion(const MotionEvent& event)
 			horizontal_scroll = drag_scroll_start + scroll_delta;
 			horizontal_scroll = std::min(std::max(0.0f, horizontal_scroll),
 										 scroll_width - bar_width);
+			update_child_position();
 			repaint();
 			return true;
 		}
@@ -285,6 +288,7 @@ bool ScrollContainer::onScroll(const ScrollEvent& event)
 			vertical_scroll -= event.delta.getY() * 30;
 			vertical_scroll = std::min(std::max(vertical_scroll, 0.0f),
 									   scroll_height - bar_height);
+			update_child_position();
 			repaint();
 			return true;
 		}
@@ -307,6 +311,7 @@ bool ScrollContainer::onScroll(const ScrollEvent& event)
 			}
 			horizontal_scroll = std::min(std::max(0.0f, horizontal_scroll),
 										 scroll_width - bar_width);
+			update_child_position();
 			repaint();
 			return true;
 		}
@@ -323,6 +328,23 @@ void ScrollContainer::update_child_position()
 	}
 
 	FMpireWidget* const child = (FMpireWidget*) getChildren().front();
+
+	const float visible_height =
+		getHeight()
+		- ((scroll_mode & HORIZONTAL) ? std::min(getHeight() * 0.05f, 10.0f)
+									  : 0.0f);
+	const float visible_width =
+		getWidth()
+		- ((scroll_mode & VERTICAL) ? std::min(getWidth() * 0.05f, 10.0f)
+									: 0.0f);
+	vertical_scroll =
+		std::clamp(vertical_scroll,
+				   0.0f,
+				   std::max(0.0f, scroll_height - visible_height));
+	horizontal_scroll =
+		std::clamp(horizontal_scroll,
+				   0.0f,
+				   std::max(0.0f, scroll_width - visible_width));
 
 	Point<int> child_pos = getAbsolutePos();
 	unsigned int child_width = getWidth();

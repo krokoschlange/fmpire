@@ -24,6 +24,8 @@ public:
 
 	inline Rectangle<float> get_clip_area() const { return clip_area; }
 
+	virtual void on_focus_lost() {}
+
 	inline float get_clip_radius() const { return clip_radius; }
 
 	inline Corner get_clip_corners() const { return clip_corners; }

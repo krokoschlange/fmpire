@@ -267,7 +267,7 @@ bool WaveformEditor::onMouse(const MouseEvent& event)
 
 				active_tool->start({x, y, snapped_x, snapped_y});
 
-				on_waveform_updated(true);
+				on_waveform_updated(true, false);
 			}
 			return true;
 		}
@@ -356,7 +356,7 @@ void WaveformEditor::update_delete_button()
 	delete_button->setSize(button_size, button_size);
 }
 
-void WaveformEditor::on_waveform_updated(bool update_dsp)
+void WaveformEditor::on_waveform_updated(bool update_dsp, bool notify_callback)
 {
 	if (update_dsp)
 	{
@@ -374,6 +374,11 @@ void WaveformEditor::on_waveform_updated(bool update_dsp)
 
 	update_delete_button();
 	spectrum_view->set_waveform(waveform);
+
+	if (callback && notify_callback)
+	{
+		callback->on_waveform_edited(this, waveform, update_dsp);
+	}
 }
 
 void WaveformEditor::on_part_edited(WaveformPartEditor* const editor,
@@ -396,10 +401,11 @@ void WaveformEditor::on_part_edited(WaveformPartEditor* const editor,
 }
 
 void WaveformEditor::on_harmonics_edited(HarmonicEditor* const editor,
-										 HarmonicsWaveformPart* const part)
+										 HarmonicsWaveformPart* const part,
+										 const bool is_done)
 {
 	part->update();
-	on_waveform_updated(true);
+	on_waveform_updated(true, is_done);
 	repaint();
 }
 

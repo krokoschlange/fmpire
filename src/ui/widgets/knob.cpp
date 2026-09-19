@@ -9,6 +9,10 @@
 #include "double_click.h"
 #include "draw_operations.h"
 
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+
 namespace fmpire
 {
 
@@ -20,12 +24,140 @@ Knob::Knob(Widget* parentWidget) :
 	label_scale(0.2),
 	drag_speed(0.005),
 	dragging(false),
-	callback(nullptr)
+	callback(nullptr),
+	mod_model(nullptr),
+	mod_target(TargetType::OSC_VOLUME),
+	mod_object(0),
+	mod_dragging(false),
+	mod_amount(0.0f)
 {
 }
 
 Knob::~Knob() noexcept
 {
+	if (mod_model)
+	{
+		mod_model->remove_listener(this);
+	}
+}
+
+void Knob::set_mod_target(ModulationModel& modulation_model,
+						  const TargetType target,
+						  const size_t target_object)
+{
+	if (mod_model != &modulation_model)
+	{
+		if (mod_model)
+		{
+			mod_model->remove_listener(this);
+		}
+		mod_model = &modulation_model;
+		mod_model->add_listener(this);
+	}
+	mod_target = target;
+	mod_object = target_object;
+	repaint();
+}
+
+void Knob::on_modulation_changed()
+{
+	repaint();
+}
+
+bool Knob::is_mod_mode() const
+{
+	return mod_model && mod_model->has_armed_source();
+}
+
+std::string Knob::create_mod_tooltip_string() const
+{
+	char text[48];
+	std::snprintf(text, sizeof(text), "Mod amount: %.2f", mod_amount);
+	return text;
+}
+
+bool Knob::on_mod_mouse(const MouseEvent& event)
+{
+	const SourceId armed = mod_model->get_armed_source();
+	const size_t slot = mod_model->find_route(armed, mod_target, mod_object);
+
+	if (event.button == 1 && event.press && contains_clipped(event.pos))
+	{
+		if (DoubleClick::is_double_click(event.button, event.time))
+		{
+			if (slot != ModulationModel::npos)
+			{
+				mod_model->remove_route(slot);
+			}
+			mod_dragging = false;
+			unpin_tooltip();
+			return true;
+		}
+
+		const RouteSettings* route = mod_model->get_route(slot);
+		mod_amount = route ? route->amount : 0.0f;
+		mod_dragging = true;
+		last_mouse_pos = event.pos;
+		show_tooltip(create_mod_tooltip_string(),
+					 event.absolutePos.getX(),
+					 event.absolutePos.getY(),
+					 true);
+		return true;
+	}
+	else if (event.button == 1 && !event.press && mod_dragging)
+	{
+		mod_dragging = false;
+		unpin_tooltip();
+		if (std::fabs(mod_amount) < 0.01f && slot != ModulationModel::npos)
+		{
+			mod_model->remove_route(slot);
+		}
+		return true;
+	}
+	else if (event.button == 2 && event.press && contains_clipped(event.pos))
+	{
+		const RouteSettings* route = mod_model->get_route(slot);
+		if (route)
+		{
+			mod_model->set_route_bipolar(slot, !route->bipolar);
+		}
+		return true;
+	}
+	return false;
+}
+
+bool Knob::on_mod_motion(const MotionEvent& event)
+{
+	if (!mod_dragging)
+	{
+		return false;
+	}
+	if (!is_mod_mode())
+	{
+		// disarmed in the middle of a drag
+		mod_dragging = false;
+		unpin_tooltip();
+		return false;
+	}
+
+	const float diff = last_mouse_pos.getY() - event.pos.getY();
+	mod_amount = std::clamp(mod_amount + diff * drag_speed * 2.0f, -1.0f, 1.0f);
+
+	// keep the route alive while dragging through zero; it is removed on
+	// release if it ended up (almost) at zero
+	float applied = mod_amount;
+	if (std::fabs(applied) < 0.002f)
+	{
+		applied = mod_amount >= 0.0f ? 0.002f : -0.002f;
+	}
+	mod_model->set_route_amount(mod_model->get_armed_source(),
+								mod_target,
+								mod_object,
+								applied);
+
+	update_tooltip(create_mod_tooltip_string());
+	last_mouse_pos = event.pos;
+	return true;
 }
 
 void Knob::set_value(float new_value, bool emit_callback)
@@ -75,6 +207,11 @@ void Knob::set_callback(Callback* cb)
 
 bool Knob::onMouse(const MouseEvent& event)
 {
+	if (is_mod_mode() || mod_dragging)
+	{
+		return on_mod_mouse(event);
+	}
+
 	if (event.button == 1 && event.press && contains_clipped(event.pos))
 	{
 		if (DoubleClick::is_double_click(event.button, event.time))
@@ -128,6 +265,11 @@ bool Knob::onMouse(const MouseEvent& event)
 
 bool Knob::onMotion(const MotionEvent& event)
 {
+	if (is_mod_mode() || mod_dragging)
+	{
+		return on_mod_motion(event);
+	}
+
 	if (contains_clipped(event.pos))
 	{
 		show_tooltip(create_tooltip_string(),
@@ -170,6 +312,46 @@ void Knob::onDisplay()
 					  lerp(45, 315, value));
 	theme->highlight.setFor(context);
 	slider.draw(context, radius * 0.4);
+
+	if (is_mod_mode())
+	{
+		const size_t slot = mod_model->find_route(mod_model->get_armed_source(),
+												  mod_target,
+												  mod_object);
+		const RouteSettings* route = mod_model->get_route(slot);
+
+		Color(255, 150, 40).setFor(context);
+		Arc<float> ring(getWidth() / 2, getHeight() / 2, radius * 1.25f, 45, 315);
+		ring.draw(context, radius * 0.05f);
+
+		if (route)
+		{
+			float low = value;
+			float high = value;
+			if (route->bipolar)
+			{
+				low -= std::fabs(route->amount);
+				high += std::fabs(route->amount);
+			}
+			else if (route->amount >= 0.0f)
+			{
+				high += route->amount;
+			}
+			else
+			{
+				low += route->amount;
+			}
+			low = std::clamp(low, 0.0f, 1.0f);
+			high = std::clamp(high, 0.0f, 1.0f);
+
+			Arc<float> range(getWidth() / 2,
+							 getHeight() / 2,
+							 radius * 1.25f,
+							 lerp(45, 315, low),
+							 lerp(45, 315, high));
+			range.draw(context, radius * 0.18f);
+		}
+	}
 
 	Color(255, 255, 255).setFor(context);
 	draw_text(context,

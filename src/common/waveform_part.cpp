@@ -212,6 +212,13 @@ HarmonicsWaveformPart::~HarmonicsWaveformPart() noexcept
 {
 }
 
+void HarmonicsWaveformPart::set_width_and_index(uint32_t wf_size,
+												uint32_t wf_index)
+{
+	WaveformPart::set_width_and_index(wf_size, wf_index);
+	update();
+}
+
 float HarmonicsWaveformPart::sample(size_t position) const
 {
 	if (position < start || position >= end || samples.empty())
@@ -230,7 +237,7 @@ std::string HarmonicsWaveformPart::encode() const
 	uint32_t harmonic_count = harmonics.size();
 	str += encode_base64(reinterpret_cast<const uint8_t*>(&harmonic_count),
 						 sizeof(harmonic_count));
-	str += encode_base64(reinterpret_cast<const uint8_t*>(&harmonics),
+	str += encode_base64(reinterpret_cast<const uint8_t*>(harmonics.data()),
 						 harmonics.size() * sizeof(Harmonic));
 	return str;
 }
@@ -309,7 +316,9 @@ void HarmonicsWaveformPart::update()
 		std::vector<double> real(waveform_size, 0);
 		std::vector<double> imag(waveform_size, 0);
 
-		for (size_t harm = 0; harm < harmonics.size(); harm++)
+		size_t harmonic_count =
+			std::min(harmonics.size(), (size_t) waveform_size);
+		for (size_t harm = 0; harm < harmonic_count; harm++)
 		{
 			real[harm] = -sin(harmonics[harm].phase * 2 * M_PI)
 					   * harmonics[harm].amplitude;
@@ -344,7 +353,8 @@ void HarmonicsWaveformPart::update()
 			float value = 0;
 			for (size_t harm = 0; harm < harmonics.size(); harm++)
 			{
-				float harm_phase = wrap(1, phase + harmonics[harm].phase);
+				float harm_phase =
+					wrap(1, phase * harm + harmonics[harm].phase);
 				size_t wave_pos =
 					(size_t) (harm_phase * waveform_size) % waveform_size;
 				value += base_wave[wave_pos] * harmonics[harm].amplitude;
@@ -354,5 +364,39 @@ void HarmonicsWaveformPart::update()
 	}
 }
 
+std::vector<HarmonicsWaveformPart::Harmonic> analyze_harmonics(
+	const std::vector<float>& samples,
+	bool high_quality)
+{
+	std::vector<double> real(samples.begin(), samples.end());
+	std::vector<double> imag(samples.size(), 0.0);
+
+	Fft::transform(real, imag);
+
+	size_t harmonic_count = high_quality ? real.size() / 2 : 128;
+	harmonic_count = std::min(harmonic_count, real.size());
+
+	std::vector<HarmonicsWaveformPart::Harmonic> harmonics(harmonic_count);
+	for (size_t harm = 0; harm < harmonic_count; harm++)
+	{
+		double re = real[harm];
+		double im = imag[harm];
+		float amplitude = sqrt(re * re + im * im) / real.size() * 2;
+		float phase = atan2(-re, -im) / (2 * M_PI);
+
+		if (harm == 0)
+		{
+			amplitude /= 2;
+		}
+		if (phase < 0)
+		{
+			phase += 1;
+		}
+
+		harmonics[harm] = {phase, amplitude};
+	}
+
+	return harmonics;
+}
 
 } // namespace fmpire

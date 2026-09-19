@@ -30,7 +30,7 @@ public:
 
 	Type get_type() const;
 
-	void set_width_and_index(uint32_t wf_size, uint32_t wf_index);
+	virtual void set_width_and_index(uint32_t wf_size, uint32_t wf_index);
 
 	inline uint32_t get_start() const { return start; }
 
@@ -129,6 +129,9 @@ public:
 	virtual std::string encode() const override;
 	virtual void decode(std::string_view& data) override;
 
+	virtual void set_width_and_index(uint32_t wf_size,
+									 uint32_t wf_index) override;
+
 	enum class HarmonicType
 	{
 		SIN = 0,
@@ -145,14 +148,26 @@ public:
 
 	inline std::vector<Harmonic>& get_harmonics() { return harmonics; }
 
+	inline HarmonicType get_harmonic_type() const { return type; }
+
+	inline void set_harmonic_type(HarmonicType t)
+	{
+		type = t;
+		update();
+	}
+
 	void update();
 
 protected:
 	std::vector<Harmonic> harmonics;
-	HarmonicType type;
+	HarmonicType type = HarmonicType::SIN;
 
 	std::vector<float> samples;
 };
+
+std::vector<HarmonicsWaveformPart::Harmonic> analyze_harmonics(
+	const std::vector<float>& samples,
+	bool high_quality);
 
 } // namespace fmpire
 

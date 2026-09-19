@@ -27,6 +27,14 @@ WaveformPartEditor::WaveformPartEditor(Widget* parent) :
 	function_editor = new TextEntry(this);
 	function_editor->set_callback(this);
 	put(function_editor, 1, 0);
+
+	harmonic_type_selector = new Selector(this);
+	harmonic_type_selector->add_option("Sin");
+	harmonic_type_selector->add_option("Tri");
+	harmonic_type_selector->add_option("Saw");
+	harmonic_type_selector->add_option("Sqr");
+	harmonic_type_selector->set_callback(this);
+	put(harmonic_type_selector, 1, 0);
 }
 
 WaveformPartEditor::~WaveformPartEditor() noexcept
@@ -49,6 +57,22 @@ void WaveformPartEditor::on_selected(Selector* const selector,
 			if (callback)
 			{
 				callback->on_part_edited(this, new_part);
+			}
+		}
+	}
+	else if (selector == harmonic_type_selector)
+	{
+		if (part && part->get_type() == WaveformPart::Type::HARMONIC)
+		{
+			Ref<HarmonicsWaveformPart> harmonic =
+				static_ref_cast<HarmonicsWaveformPart>(part);
+
+			harmonic->set_harmonic_type(
+				(HarmonicsWaveformPart::HarmonicType) index);
+
+			if (callback)
+			{
+				callback->on_part_edited(this, part);
 			}
 		}
 	}
@@ -92,6 +116,17 @@ void WaveformPartEditor::set_part(WaveformPart* const p)
 			static_ref_cast<FunctionWaveformPart>(part);
 
 		function_editor->set_text(function->get_function());
+	}
+
+	bool is_harmonic = part && part->get_type() == WaveformPart::Type::HARMONIC;
+	harmonic_type_selector->setVisible(is_harmonic);
+
+	if (is_harmonic)
+	{
+		Ref<HarmonicsWaveformPart> harmonic =
+			static_ref_cast<HarmonicsWaveformPart>(part);
+
+		harmonic_type_selector->select((int) harmonic->get_harmonic_type());
 	}
 }
 

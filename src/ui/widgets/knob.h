@@ -3,17 +3,24 @@
 
 #include "DistrhoUI.hpp"
 #include "fmpire_widget.h"
+#include "modulation_model.h"
 
 #include "theme.h"
 
 namespace fmpire
 {
 
-class Knob : public FMpireWidget
+class Knob : public FMpireWidget, public ModulationModel::Listener
 {
 public:
 	explicit Knob(Widget* parentWidget);
 	virtual ~Knob() noexcept;
+	
+	void set_mod_target(ModulationModel& modulation_model,
+						const TargetType target,
+						const size_t target_object);
+
+	virtual void on_modulation_changed() override;
 
 	void set_value(float new_value, bool emit_callback = false);
 	void set_default_value(const float val);
@@ -58,6 +65,17 @@ private:
 	Point<double> last_mouse_pos;
 
 	Callback* callback;
+
+	ModulationModel* mod_model;
+	TargetType mod_target;
+	size_t mod_object;
+	bool mod_dragging;
+	float mod_amount;
+
+	bool is_mod_mode() const;
+	bool on_mod_mouse(const MouseEvent& event);
+	bool on_mod_motion(const MotionEvent& event);
+	std::string create_mod_tooltip_string() const;
 
 	std::string create_tooltip_string();
 };

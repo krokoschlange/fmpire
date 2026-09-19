@@ -169,52 +169,62 @@ void draw_text(const GraphicsContext& context,
 	cairo_set_font_size(handle, size);
 	cairo_text_extents_t xtents;
 	cairo_text_extents(handle, text, &xtents);
+	cairo_font_extents_t font_xtents;
+	cairo_font_extents(handle, &font_xtents);
+
+	int vertical = 1;
 	float x_offset = 0;
-	float y_offset = 0;
 	switch (anchor)
 	{
 	case Anchor::TOP_LEFT:
 		x_offset = 0;
-		y_offset = xtents.height;
+		vertical = 0;
 		break;
 	case Anchor::TOP_CENTER:
 		x_offset = -xtents.x_advance / 2;
-		y_offset = xtents.height;
+		vertical = 0;
 		break;
 	case Anchor::TOP_RIGHT:
 		x_offset = -xtents.x_advance;
-		y_offset = xtents.height;
+		vertical = 0;
 		break;
 	case Anchor::LEFT_CENTER:
 		x_offset = 0;
-		y_offset = xtents.height / 2;
+		vertical = 1;
 		break;
 	case Anchor::CENTER:
 		x_offset = -xtents.x_advance / 2;
-		y_offset = xtents.height / 2;
+		vertical = 1;
 		break;
 	case Anchor::RIGHT_CENTER:
 		x_offset = -xtents.x_advance;
-		y_offset = xtents.height / 2;
+		vertical = 1;
 		break;
 	case Anchor::BOTTOM_LEFT:
 		x_offset = 0;
-		y_offset = 0;
+		vertical = 2;
 		break;
 	case Anchor::BOTTOM_CENTER:
 		x_offset = -xtents.x_advance / 2;
-		y_offset = 0;
+		vertical = 2;
 		break;
 	case Anchor::BOTTOM_RIGHT:
 		x_offset = -xtents.x_advance;
-		y_offset = 0;
+		vertical = 2;
 		break;
 	default:
 		break;
 	}
+
+	float y_offset = 0;
 	if (full_center)
 	{
-		y_offset -= (xtents.height + xtents.y_bearing);
+		y_offset = -xtents.y_bearing - vertical * xtents.height / 2;
+	}
+	else
+	{
+		y_offset = font_xtents.ascent
+				   - vertical * (font_xtents.ascent + font_xtents.descent) / 2;
 	}
 	cairo_set_source_rgb(handle, 1, 0, 0);
 	/*cairo_rectangle(handle, x + x_offset, y + (xtents.height +

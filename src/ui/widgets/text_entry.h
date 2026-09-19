@@ -33,10 +33,15 @@ protected:
 
 	virtual bool onMouse(const MouseEvent& event) override;
 	virtual bool onCharacterInput(const CharacterInputEvent& event) override;
+	virtual bool onKeyboard(const KeyboardEvent& event) override;
 
 private:
+	float get_text_advance(const std::wstring& text) const;
+	void update_scroll();
+
 	std::wstring value;
 	int cursor_position;
+	float scroll_offset;
 
 	Callback* callback;
 };

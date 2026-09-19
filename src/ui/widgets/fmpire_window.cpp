@@ -1,6 +1,7 @@
 #include "fmpire_window.h"
 
 #include "DistrhoUI.hpp"
+#include "fmpire_widget.h"
 
 namespace fmpire
 {
@@ -17,6 +18,16 @@ FMpireWindow::~FMpireWindow() noexcept
 	if (tooltip)
 	{
 		delete tooltip;
+	}
+}
+
+void FMpireWindow::set_focus(FMpireWidget* widget)
+{
+	FMpireWidget* const previous = focus;
+	focus = widget;
+	if (previous && previous != widget)
+	{
+		previous->on_focus_lost();
 	}
 }
 
