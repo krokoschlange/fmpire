@@ -1,5 +1,7 @@
 #include "state_manager.h"
 
+#include <algorithm>
+
 #include "defines.h"
 #include "fmpire_ui.h"
 #include "oscillator_settings.h"
@@ -9,9 +11,11 @@ namespace fmpire
 {
 
 StateManager::StateManager(FMpireUI* const plugin_ui) :
-	ui(plugin_ui)
+	ui(plugin_ui),
+	modulation(*this)
 {
 	std::fill(oscillator_settings.begin(), oscillator_settings.end(), nullptr);
+	macro_values.fill(0.0f);
 }
 
 StateManager::~StateManager() noexcept
@@ -36,6 +40,8 @@ void StateManager::state_changed(const std::string& key,
 				oscillator_settings[osc_idx]->set_state(state);
 			}
 		}
+
+		modulation.parse_state(state);
 	}
 }
 
@@ -86,6 +92,80 @@ void StateManager::on_wavetable_edited(const size_t osc) const
 	}
 
 	oscillator_settings[osc]->on_wavetable_changed();
+}
+
+void StateManager::add_macro_listener(MacroListener* const listener)
+{
+	macro_listeners.push_back(listener);
+}
+
+void StateManager::remove_macro_listener(MacroListener* const listener)
+{
+	macro_listeners.erase(
+		std::remove(macro_listeners.begin(), macro_listeners.end(), listener),
+		macro_listeners.end());
+}
+
+float StateManager::get_macro(const size_t index) const
+{
+	return index < macro_values.size() ? macro_values[index] : 0.0f;
+}
+
+void StateManager::on_macro_changed(const size_t index, const float value)
+{
+	if (index >= macro_values.size())
+	{
+		return;
+	}
+	macro_values[index] = value;
+
+	const std::vector<MacroListener*> listeners = macro_listeners;
+	for (MacroListener* const listener : listeners)
+	{
+		listener->on_macro_changed(index, value);
+	}
+}
+
+void StateManager::set_macro(const size_t index, const float value)
+{
+	if (index >= macro_values.size())
+	{
+		return;
+	}
+	ui->setParameterValue(index, value);
+	on_macro_changed(index, value);
+}
+
+void StateManager::begin_macro_edit(const size_t index)
+{
+	if (index < macro_values.size())
+	{
+		ui->editParameter(index, true);
+	}
+}
+
+void StateManager::end_macro_edit(const size_t index)
+{
+	if (index < macro_values.size())
+	{
+		ui->editParameter(index, false);
+	}
+}
+
+void StateManager::open_file_browser(FileBrowserCallback callback)
+{
+	file_browser_callback = callback;
+	ui->openFileBrowser();
+}
+
+void StateManager::on_file_browser_selected(const char* filename)
+{
+	if (file_browser_callback)
+	{
+		FileBrowserCallback callback = file_browser_callback;
+		file_browser_callback = nullptr;
+		callback(filename);
+	}
 }
 
 } // namespace fmpire

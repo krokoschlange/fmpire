@@ -16,8 +16,8 @@ namespace fmpire
 {
 
 OscillatorSettings::OscillatorSettings(Widget* parent,
-									   const size_t osc_index,
-									   StateManager& state_mgr) :
+		   const size_t osc_index,
+		   StateManager& state_mgr) :
 	GridContainer(parent),
 	index(osc_index),
 	state_manager(state_mgr),
@@ -58,6 +58,9 @@ OscillatorSettings::OscillatorSettings(Widget* parent,
 	volume->set_default_value(0.5);
 	volume->set_label("VOL");
 	volume->set_tooltip("Volume");
+	volume->set_mod_target(state_manager.get_modulation(),
+		TargetType::OSC_VOLUME,
+		index);
 	put(volume, 2, 0);
 
 	wavetable_position = new Knob(this);
@@ -65,6 +68,9 @@ OscillatorSettings::OscillatorSettings(Widget* parent,
 	wavetable_position->set_default_value(0);
 	wavetable_position->set_label("WT");
 	wavetable_position->set_tooltip("Wavetable Position");
+	wavetable_position->set_mod_target(state_manager.get_modulation(),
+		TargetType::OSC_WT_POS,
+		index);
 	put(wavetable_position, 2, 1);
 
 	detune = new Knob(this);
@@ -72,6 +78,9 @@ OscillatorSettings::OscillatorSettings(Widget* parent,
 	detune->set_default_value(0.5);
 	detune->set_label("DET");
 	detune->set_tooltip("Detune", -24, 48, " semi");
+	detune->set_mod_target(state_manager.get_modulation(),
+		TargetType::OSC_DETUNE,
+		index);
 	put(detune, 2, 2);
 
 	pan = new Knob(this);
@@ -79,6 +88,9 @@ OscillatorSettings::OscillatorSettings(Widget* parent,
 	pan->set_default_value(0.5);
 	pan->set_label("PAN");
 	pan->set_tooltip("Pan", -1, 2);
+	pan->set_mod_target(state_manager.get_modulation(),
+		TargetType::OSC_PAN,
+		index);
 	put(pan, 2, 3);
 
 	octave_offset = new IntEditor(this);
@@ -121,12 +133,18 @@ OscillatorSettings::OscillatorSettings(Widget* parent,
 	unison_detune->set_callback(this);
 	unison_detune->set_label("U DET");
 	unison_detune->set_tooltip("Unison Detune", 0, 1, "semi");
+	unison_detune->set_mod_target(state_manager.get_modulation(),
+		TargetType::OSC_UNISON_DETUNE,
+		index);
 	put(unison_detune, 4, 1);
 
 	unison_spread = new Knob(this);
 	unison_spread->set_callback(this);
 	unison_spread->set_label("U SPR");
 	unison_spread->set_tooltip("Unison Spread");
+	unison_spread->set_mod_target(state_manager.get_modulation(),
+		TargetType::OSC_UNISON_SPREAD,
+		index);
 	put(unison_spread, 4, 2);
 
 	unison_phase_random = new Knob(this);
@@ -202,7 +220,7 @@ void OscillatorSettings::on_release(Button* const button)
 }
 
 void OscillatorSettings::on_value_changed(IntEditor* const editor,
-										  const int value)
+			  const int value)
 {
 	std::string data;
 	std::string key;

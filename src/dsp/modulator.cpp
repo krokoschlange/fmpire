@@ -1,60 +1,66 @@
 #include "modulator.h"
 
-#include "voice.h"
+#include <algorithm>
+#include <cmath>
 
 namespace fmpire
 {
 
-Modulator::Modulator()
+// A disabled placeholder; its table is never read.
+Modulator::Modulator() :
+	enabled(false),
+	generation(0),
+	type(Type::ENVELOPE),
+	use_beats(false),
+	length_seconds(1.0f),
+	length_beats(1.0f),
+	amount(1.0f),
+	phase_offset(0.0f),
+	sustain_pos(0.0f)
 {
+	table.fill(0.0f);
 }
 
-Modulator::~Modulator() noexcept
+Modulator::Modulator(const ModulatorSettings& settings, const Curve& curve) :
+	enabled(false),
+	generation(0),
+	type(settings.type),
+	use_beats(settings.use_beats),
+	length_seconds(std::max(settings.length_seconds, 0.001f)),
+	length_beats(std::max(settings.length_beats, 0.001f)),
+	amount(std::clamp(settings.amount, 0.0f, 1.0f)),
+	phase_offset(settings.phase_offset - std::floor(settings.phase_offset)),
+	sustain_pos(curve.point(curve.get_sustain_index()).x)
 {
+	curve.bake(table.data());
 }
 
-float Modulator::sample()
+ModulatorSettings Modulator::get_settings() const
 {
-	return 1;
+	ModulatorSettings settings;
+	settings.type = type;
+	settings.use_beats = use_beats;
+	settings.length_seconds = length_seconds;
+	settings.length_beats = length_beats;
+	settings.amount = amount;
+	settings.phase_offset = phase_offset;
+	return settings;
 }
 
-float Modulator::get_release()
+float Modulator::get_length_seconds(const float bpm) const
 {
-	return release;
+	const float seconds = use_beats ? length_beats * 60.0f / std::max(bpm, 1.0f)
+									: length_seconds;
+	return std::max(seconds, 0.001f);
 }
 
-ModulatorTarget::ModulatorTarget()
+float Modulator::get_release_seconds(const float bpm) const
 {
-}
-
-ModulatorTarget::~ModulatorTarget() noexcept
-{
-}
-
-float* ModulatorTarget::resolve(const ModulatorTargetObjects& objects) const
-{
-	switch (target_type)
+	if (type != Type::ENVELOPE)
 	{
-	case TargetType::OSC_VOLUME:
-		return &objects.osc_voices[target_object_id].volume;
-	case TargetType::OSC_WT_POS:
-		return &objects.osc_voices[target_object_id].wavetable_position;
-	case TargetType::OSC_DETUNE:
-		return &objects.osc_voices[target_object_id].detune;
-	case TargetType::OSC_PAN:
-		return &objects.osc_voices[target_object_id].pan;
-	case TargetType::OSC_UNISON_DETUNE:
-		return &objects.osc_voices[target_object_id].unison_detune;
-	case TargetType::OSC_UNISON_SPREAD:
-		return &objects.osc_voices[target_object_id].unison_spread;
-	case TargetType::MOD_AMOUNT:
-		return &objects.mod_voices[target_object_id].amount;
-	case TargetType::MOD_FREQ:
-		return &objects.mod_voices[target_object_id].frequency;
-	default:
-		return nullptr;
+		return 0.0f;
 	}
+	return (1.0f - sustain_pos) * get_length_seconds(bpm);
 }
-
 
 } // namespace fmpire

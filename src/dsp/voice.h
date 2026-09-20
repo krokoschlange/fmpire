@@ -2,23 +2,27 @@
 #define VOICE_H_INCLUDED
 
 #include "defines.h"
+#include "mod_source.h"
+#include "modulator.h"
 #include "oscillator.h"
+#include "patch.h"
 
 #include <array>
 #include <cstddef>
 #include <random>
+#include <vector>
 
 namespace fmpire
 {
-class Modulator;
-class ModulatorTarget;
-struct ModulatorTargetObjects;
 
 class OscillatorVoice
 {
 public:
-	OscillatorVoice(Oscillator& osc);
+	OscillatorVoice();
 	virtual ~OscillatorVoice() noexcept;
+
+	// The oscillator of the current patch this voice plays.
+	void set_oscillator(const Oscillator* const osc) { oscillator = osc; }
 
 	void init(std::default_random_engine& rand,
 			  const int note,
@@ -30,13 +34,21 @@ public:
 
 	void run_one_sample(float& left, float& right);
 
-	void set_state(const std::string& key, std::string_view& state);
+	// Copies the base values (the knobs) from the oscillator, e.g. after they
+	// changed while the note is playing.
+	void refresh_base_values();
 
-	inline bool is_active() { return oscillator->active; }
+	inline bool is_active() { return oscillator->params.active; }
 
+	inline void clear_modulation() { mod_offsets.fill(0.0f); }
+
+	inline void add_modulation(const TargetType target, const float value)
+	{
+		mod_offsets[static_cast<size_t>(target)] += value;
+	}
 
 private:
-	Oscillator* const oscillator;
+	const Oscillator* oscillator;
 	float samplerate;
 	size_t last_unison_size;
 	float last_sample;
@@ -49,6 +61,7 @@ private:
 
 	float base_frequency;
 
+	// Base values (the knobs). Modulation is added on top in run_one_sample.
 	float volume;
 	float wavetable_position;
 	float detune;
@@ -58,40 +71,57 @@ private:
 	float unison_detune;
 	float unison_spread;
 
-	friend ModulatorTarget;
+	// indexed by the oscillator TargetTypes
+	std::array<float, osc_target_count> mod_offsets;
 };
 
+// Per-voice playback state of one Modulator (LFO or envelope).
 class ModulatorVoice
 {
 public:
 	ModulatorVoice();
-	virtual ~ModulatorVoice() noexcept;
 
-	void init(Modulator& mod,
-			  const ModulatorTargetObjects& target_objects,
-			  const float rate);
+	void init(const Modulator& mod, const float rate);
 
-	void modulate();
+	// Advances one sample; updates get_value() / get_gain().
+	void process(const Modulator& mod, const float bpm);
 
-	void release();
+	// Note off: envelopes switch to their release section.
+	void release(const Modulator& mod);
 
-	void set_state(const std::string& key, std::string_view& state);
+	// Curve value (0..1) and the output gain (the modulator's amount).
+	inline float get_value() const { return value; }
+
+	inline float get_gain() const { return gain; }
+
+	// The generation of the modulator this state was initialised for.
+	inline uint32_t get_generation() const { return generation; }
+
+	inline void clear_modulation()
+	{
+		amount_offset = 0.0f;
+		speed_offset = 0.0f;
+	}
+
+	void add_modulation(const TargetType target, const float value);
 
 private:
-	Modulator* modulator;
-	std::vector<float*> targets;
-
+	uint32_t generation;
 	float samplerate;
+	float release_decay;
 
-	float amount;
-	float frequency;
-	float phase;
-
+	// envelope position or LFO phase, 0..1
+	float position;
 	bool released;
-	size_t frames_since_start;
-	size_t frames_since_release;
 
-	friend ModulatorTarget;
+	float value;
+	float gain;
+
+	// smooths the jump when the release starts from the current level
+	float release_offset;
+
+	float amount_offset;
+	float speed_offset;
 };
 
 class Voice
@@ -102,32 +132,42 @@ public:
 		virtual void on_voice_ended(Voice* const voice) = 0;
 	};
 
-	Voice(std::array<Oscillator, FMPIRE_OSC_COUNT>& oscs,
-		  std::vector<Modulator*>& mods,
-		  VoiceEndedCallback* ended_cb);
+	Voice(GlobalSources& global_sources, VoiceEndedCallback* ended_cb);
 	Voice(const Voice& voice);
 	virtual ~Voice() noexcept;
 
 	void start(const size_t offset,
 			   const int note_idx,
 			   const float vol,
-			   const float rate);
+			   const float rate,
+			   const float bpm);
 	void stop(const size_t delay);
 	void kill();
 
-	void run(float** inout, size_t count);
+	void run(float** inout, size_t count, const float bpm);
 
-	void set_state(std::string_view& key, std::string_view& state);
+	// Audio thread, before anything else in a block: the patch to play from
+	// now on. Grows the per-modulator playback state if the patch has more
+	// modulators than any patch before (the only allocation on the audio thread).
+	void set_patch(const Patch& new_patch);
+
+	inline void set_poly_pressure(const float pressure)
+	{
+		sources.poly_pressure = pressure;
+	}
 
 	bool is_active();
 	int get_note() const;
 
 private:
 	bool active;
-	std::array<Oscillator, FMPIRE_OSC_COUNT>& oscillators;
-	std::vector<Modulator*>& modulators;
+	const Patch* patch;
+	GlobalSources& globals;
 	std::array<OscillatorVoice, FMPIRE_OSC_COUNT> oscillator_voices;
 	std::vector<ModulatorVoice> modulator_voices;
+	bool modulators_released;
+	VoiceSources sources;
+	float samplerate;
 	std::default_random_engine rand;
 
 	size_t delay;
@@ -139,6 +179,12 @@ private:
 	size_t age;
 	int note;
 	float volume;
+
+	void apply_routes(const size_t mod_count, const size_t route_count);
+	bool read_source(const SourceId& source,
+					 const size_t mod_count,
+					 float& value,
+					 float& gain) const;
 };
 
 } // namespace fmpire

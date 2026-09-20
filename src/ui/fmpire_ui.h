@@ -12,8 +12,9 @@ USE_NAMESPACE_DISTRHO
 namespace fmpire
 {
 class GridContainer;
-class OscillatorBar;
+class OscillatorPage;
 class RelativeContainer;
+class SourceListPage;
 class WavetableEditor;
 
 class FMpireUI : public UI, public FMpireWindow, public Selector::Callback
@@ -30,6 +31,8 @@ protected:
 
 	void uiIdle() override;
 
+	void uiFileBrowserSelected(const char* filename) override;
+
 	void onDisplay() override;
 	bool onMouse(const MouseEvent& event) override;
 	bool onMotion(const MotionEvent& event) override;
@@ -44,7 +47,9 @@ private:
 	Ref<GridContainer> grid;
 	Ref<RelativeContainer> top_bar;
 	Ref<Selector> tab_selector;
-	Ref<OscillatorBar> oscillator_bar;
+	Ref<OscillatorPage> oscillator_page;
+	Ref<SourceListPage> mod_page;
+	Ref<SourceListPage> fx_page;
 
 	Ref<WavetableEditor> wavetable_editor;
 };

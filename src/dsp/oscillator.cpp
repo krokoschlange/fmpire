@@ -11,35 +11,26 @@
 namespace fmpire
 {
 
-Oscillator::Oscillator() :
-	active(false),
-	volume(0.1),
-	wavetable_position(0),
-	detune(0.5),
-	pan(0.5),
-	note_shift(0),
-	phase_offset(0),
-	phase_random(0),
-	unison_size(1),
-	unison_detune(0),
-	unison_spread(0),
-	unison_phase_random(0)
+OscillatorState::OscillatorState()
+{
+	rebuild_wavetable();
+}
+
+OscillatorState::~OscillatorState() noexcept
+{
+}
+
+void OscillatorState::rebuild_wavetable()
 {
 	uint32_t width, height;
 	wavetable_creator.get_size(width, height);
-	wavetable.update(width, height, wavetable_creator.create_wavetable());
+
+	std::shared_ptr<Wavetable> table = std::make_shared<Wavetable>();
+	table->update(width, height, wavetable_creator.create_wavetable());
+	wavetable = std::move(table);
 }
 
-Oscillator::~Oscillator() noexcept
-{
-}
-
-float Oscillator::sample(const float phase, const float wavetable_pos) const
-{
-	return wavetable.sample(wavetable_pos, phase);
-}
-
-void Oscillator::set_state(const std::string_view& key, std::string_view& state)
+void OscillatorState::set_state(const std::string_view& key, std::string_view& state)
 {
 	if (key == KEY_EVERYTHING)
 	{
@@ -67,113 +58,113 @@ void Oscillator::set_state(const std::string_view& key, std::string_view& state)
 		std::string_view key_view = key;
 		key_view.remove_prefix(strlen(KEY_OSC_WAVETABLE));
 		wavetable_creator.set_state(std::string(key_view), state);
-
-		uint32_t width, height;
-		wavetable_creator.get_size(width, height);
-		wavetable.update(width, height, wavetable_creator.create_wavetable());
-		std::cout << "updated" << std::endl;
+		rebuild_wavetable();
 	}
 	else if (key == KEY_OSC_ACTIVE)
 	{
-		active = state.starts_with("1");
+		if (state.empty())
+		{
+			return;
+		}
+		params.active = state.starts_with("1");
 		state.remove_prefix(1);
 	}
 	else if (key == KEY_OSC_VOLUME)
 	{
 		decode_base64(state,
-					  reinterpret_cast<uint8_t*>(&volume),
-					  sizeof(volume));
-		std::cout << volume << std::endl;
+					  reinterpret_cast<uint8_t*>(&params.volume),
+					  sizeof(params.volume));
+		std::cout << params.volume << std::endl;
 	}
 	else if (key == KEY_OSC_WT_POS)
 	{
 		decode_base64(state,
-					  reinterpret_cast<uint8_t*>(&wavetable_position),
-					  sizeof(wavetable_position));
-		std::cout << "wtpos " << wavetable_position << std::endl;
+					  reinterpret_cast<uint8_t*>(&params.wavetable_position),
+					  sizeof(params.wavetable_position));
+		std::cout << "wtpos " << params.wavetable_position << std::endl;
 	}
 	else if (key == KEY_OSC_DETUNE)
 	{
 		decode_base64(state,
-					  reinterpret_cast<uint8_t*>(&detune),
-					  sizeof(detune));
+					  reinterpret_cast<uint8_t*>(&params.detune),
+					  sizeof(params.detune));
 	}
 	else if (key == KEY_OSC_PAN)
 	{
-		decode_base64(state, reinterpret_cast<uint8_t*>(&pan), sizeof(pan));
+		decode_base64(state, reinterpret_cast<uint8_t*>(&params.pan), sizeof(params.pan));
 	}
 	else if (key == KEY_OSC_NOTE_SHIFT)
 	{
 		decode_base64(state,
-					  reinterpret_cast<uint8_t*>(&note_shift),
-					  sizeof(note_shift));
+					  reinterpret_cast<uint8_t*>(&params.note_shift),
+					  sizeof(params.note_shift));
 	}
 	else if (key == KEY_OSC_PHASE_OFFSET)
 	{
 		decode_base64(state,
-					  reinterpret_cast<uint8_t*>(&phase_offset),
-					  sizeof(phase_offset));
+					  reinterpret_cast<uint8_t*>(&params.phase_offset),
+					  sizeof(params.phase_offset));
 	}
 	else if (key == KEY_OSC_PHASE_RANDOM)
 	{
 		decode_base64(state,
-					  reinterpret_cast<uint8_t*>(&phase_random),
-					  sizeof(phase_random));
+					  reinterpret_cast<uint8_t*>(&params.phase_random),
+					  sizeof(params.phase_random));
 	}
 	else if (key == KEY_OSC_UNISON_SIZE)
 	{
 		decode_base64(state,
-					  reinterpret_cast<uint8_t*>(&unison_size),
-					  sizeof(unison_size));
+					  reinterpret_cast<uint8_t*>(&params.unison_size),
+					  sizeof(params.unison_size));
 	}
 	else if (key == KEY_OSC_UNISON_DETUNE)
 	{
 		decode_base64(state,
-					  reinterpret_cast<uint8_t*>(&unison_detune),
-					  sizeof(unison_detune));
+					  reinterpret_cast<uint8_t*>(&params.unison_detune),
+					  sizeof(params.unison_detune));
 	}
 	else if (key == KEY_OSC_UNISON_SPREAD)
 	{
 		decode_base64(state,
-					  reinterpret_cast<uint8_t*>(&unison_spread),
-					  sizeof(unison_spread));
+					  reinterpret_cast<uint8_t*>(&params.unison_spread),
+					  sizeof(params.unison_spread));
 	}
 	else if (key == KEY_OSC_UNISON_PHASE_RANDOM)
 	{
 		decode_base64(state,
-					  reinterpret_cast<uint8_t*>(&unison_phase_random),
-					  sizeof(unison_phase_random));
+					  reinterpret_cast<uint8_t*>(&params.unison_phase_random),
+					  sizeof(params.unison_phase_random));
 	}
 }
 
-std::string Oscillator::get_state() const
+std::string OscillatorState::get_state() const
 {
 	std::string data(OSC_DATA_STRING);
 
 	data += wavetable_creator.get_state();
-	data += active ? "1" : "0";
-	data += encode_base64(reinterpret_cast<const uint8_t*>(&volume),
-						  sizeof(volume));
-	data += encode_base64(reinterpret_cast<const uint8_t*>(&wavetable_position),
-						  sizeof(wavetable_position));
-	data += encode_base64(reinterpret_cast<const uint8_t*>(&detune),
-						  sizeof(detune));
-	data += encode_base64(reinterpret_cast<const uint8_t*>(&pan), sizeof(pan));
-	data += encode_base64(reinterpret_cast<const uint8_t*>(&note_shift),
-						  sizeof(note_shift));
-	data += encode_base64(reinterpret_cast<const uint8_t*>(&phase_offset),
-						  sizeof(phase_offset));
-	data += encode_base64(reinterpret_cast<const uint8_t*>(&phase_random),
-						  sizeof(phase_random));
-	data += encode_base64(reinterpret_cast<const uint8_t*>(&unison_size),
-						  sizeof(unison_size));
-	data += encode_base64(reinterpret_cast<const uint8_t*>(&unison_detune),
-						  sizeof(unison_detune));
-	data += encode_base64(reinterpret_cast<const uint8_t*>(&unison_spread),
-						  sizeof(unison_spread));
+	data += params.active ? "1" : "0";
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&params.volume),
+						  sizeof(params.volume));
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&params.wavetable_position),
+						  sizeof(params.wavetable_position));
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&params.detune),
+						  sizeof(params.detune));
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&params.pan), sizeof(params.pan));
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&params.note_shift),
+						  sizeof(params.note_shift));
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&params.phase_offset),
+						  sizeof(params.phase_offset));
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&params.phase_random),
+						  sizeof(params.phase_random));
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&params.unison_size),
+						  sizeof(params.unison_size));
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&params.unison_detune),
+						  sizeof(params.unison_detune));
+	data += encode_base64(reinterpret_cast<const uint8_t*>(&params.unison_spread),
+						  sizeof(params.unison_spread));
 	data +=
-		encode_base64(reinterpret_cast<const uint8_t*>(&unison_phase_random),
-					  sizeof(unison_phase_random));
+		encode_base64(reinterpret_cast<const uint8_t*>(&params.unison_phase_random),
+					  sizeof(params.unison_phase_random));
 
 	return data;
 }
