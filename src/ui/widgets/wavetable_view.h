@@ -2,6 +2,7 @@
 #define WAVETABLE_VIEW_H_INCLUDED
 
 #include "button.h"
+#include "modulation_model.h"
 #include "relative_container.h"
 
 namespace fmpire
@@ -9,7 +10,10 @@ namespace fmpire
 class StateManager;
 class Wavetable;
 
-class WavetableView : public RelativeContainer, public Button::Callback
+class WavetableView :
+	public RelativeContainer,
+	public Button::Callback,
+	public ModulationModel::Listener
 {
 public:
 	WavetableView(Widget* parent,
@@ -21,7 +25,12 @@ public:
 	void on_press(Button* const button) override;
 	void on_release(Button* const button) override;
 
-	void set_wavetable_pos(float wt_pos) { wavetable_pos = wt_pos; }
+	// The position of the knob; the view highlights the wavetable position
+	// that is actually playing, i.e. the knob modulated by its routes.
+	void set_wavetable_pos(float wt_pos);
+
+	void on_modulation_changed() override;
+	void on_route_meter_changed(const size_t slot) override;
 
 protected:
 	void onDisplay() override;
@@ -32,6 +41,9 @@ private:
 	bool single;
 
 	float wavetable_pos;
+
+	// the position that is playing right now
+	float current_pos() const;
 
 	Ref<Button> edit_button;
 	const Wavetable& wavetable;

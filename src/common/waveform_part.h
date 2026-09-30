@@ -158,6 +158,10 @@ public:
 
 	void update();
 
+	// Scales all amplitudes so the part's peak (within [start, end)) is 1.
+	// Does nothing if the part is silent.
+	void normalize();
+
 protected:
 	std::vector<Harmonic> harmonics;
 	HarmonicType type = HarmonicType::SIN;

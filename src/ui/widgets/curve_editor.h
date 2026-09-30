@@ -18,6 +18,7 @@ public:
 	void set_grid(const uint32_t x, const uint32_t y);
 
 	virtual void on_modulation_changed() override;
+	virtual void on_playhead_changed(const size_t id) override;
 
 protected:
 	void onDisplay() override;

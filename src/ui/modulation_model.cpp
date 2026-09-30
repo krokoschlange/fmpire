@@ -31,6 +31,49 @@ ModulationModel::ModulationModel(StateManager& state_mgr) :
 	state_manager(state_mgr),
 	selected_modulator(npos)
 {
+	matrix_depths.fill(0.0f);
+	route_meters.fill(0.0f);
+	playheads.fill(-1.0f);
+}
+
+size_t ModulationModel::matrix_index(const size_t type,
+									 const size_t modulator,
+									 const size_t carrier)
+{
+	return (type * FMPIRE_OSC_COUNT + carrier) * FMPIRE_OSC_COUNT + modulator;
+}
+
+float ModulationModel::get_matrix_depth(const size_t type,
+										const size_t modulator,
+										const size_t carrier) const
+{
+	if (type >= matrix_type_count || modulator >= FMPIRE_OSC_COUNT
+		|| carrier >= FMPIRE_OSC_COUNT)
+	{
+		return 0.0f;
+	}
+	return matrix_depths[matrix_index(type, modulator, carrier)];
+}
+
+void ModulationModel::set_matrix_depth(const size_t type,
+									   const size_t modulator,
+									   const size_t carrier,
+									   const float value)
+{
+	if (type >= matrix_type_count || modulator >= FMPIRE_OSC_COUNT
+		|| carrier >= FMPIRE_OSC_COUNT)
+	{
+		return;
+	}
+
+	const float depth = std::clamp(value, 0.0f, 1.0f);
+	matrix_depths[matrix_index(type, modulator, carrier)] = depth;
+
+	state_manager.set_state(std::string(KEY_OSC_PREFIX) + std::to_string(carrier)
+								+ "/" + KEY_OSC_MOD_DEPTH + std::to_string(type)
+								+ "/" + std::to_string(modulator),
+							encode_base64(reinterpret_cast<const uint8_t*>(&depth),
+										  sizeof(depth)));
 }
 
 void ModulationModel::set_armed_source(const SourceId source)
@@ -81,6 +124,62 @@ void ModulationModel::remove_listener(Listener* const listener)
 {
 	listeners.erase(std::remove(listeners.begin(), listeners.end(), listener),
 					listeners.end());
+}
+
+float ModulationModel::get_route_meter(const size_t slot) const
+{
+	return slot < route_meters.size() ? route_meters[slot] : 0.0f;
+}
+
+void ModulationModel::set_route_meter(const size_t slot, const float value)
+{
+	if (slot >= route_meters.size() || route_meters[slot] == value)
+	{
+		return;
+	}
+	route_meters[slot] = value;
+
+	const std::vector<Listener*> current = listeners;
+	for (Listener* const listener : current)
+	{
+		listener->on_route_meter_changed(slot);
+	}
+}
+
+float ModulationModel::get_target_meter(const TargetType target,
+										const size_t target_object) const
+{
+	// every route of a target reports the same offset
+	const size_t count = std::min(routes.size(), route_meters.size());
+	for (size_t index = 0; index < count; index++)
+	{
+		if (routes[index] && routes[index]->target == target
+			&& routes[index]->target_object == target_object)
+		{
+			return route_meters[index];
+		}
+	}
+	return 0.0f;
+}
+
+float ModulationModel::get_playhead(const size_t id) const
+{
+	return id < playheads.size() ? playheads[id] : -1.0f;
+}
+
+void ModulationModel::set_playhead(const size_t id, const float value)
+{
+	if (id >= playheads.size() || playheads[id] == value)
+	{
+		return;
+	}
+	playheads[id] = value;
+
+	const std::vector<Listener*> current = listeners;
+	for (Listener* const listener : current)
+	{
+		listener->on_playhead_changed(id);
+	}
 }
 
 void ModulationModel::notify()
@@ -330,7 +429,7 @@ void ModulationModel::remove_routes_of_modulator(const size_t id)
 		const bool uses_as_source =
 			route->source.type == SourceType::MODULATOR && route->source.index == id;
 		const bool uses_as_target =
-			static_cast<size_t>(route->target) >= osc_target_count
+			is_modulator_target(route->target)
 			&& route->target_object == id;
 		if (uses_as_source || uses_as_target)
 		{
@@ -347,10 +446,33 @@ void ModulationModel::parse_state(std::string_view& state)
 {
 	modulators.clear();
 	routes.clear();
+	matrix_depths.fill(0.0f);
 
 	while (!state.empty())
 	{
-		if (state.starts_with(MODULATOR_DATA_STRING))
+		if (state.starts_with(MATRIX_DATA_STRING))
+		{
+			// per carrier: [type][modulator]
+			state.remove_prefix(MATRIX_DATA_STRING.size());
+			for (size_t carrier = 0; carrier < FMPIRE_OSC_COUNT; carrier++)
+			{
+				for (size_t type = 0; type < matrix_type_count; type++)
+				{
+					for (size_t modulator = 0; modulator < FMPIRE_OSC_COUNT;
+						 modulator++)
+					{
+						float value = 0.0f;
+						decode_base64(state,
+									  reinterpret_cast<uint8_t*>(&value),
+									  sizeof(value));
+						matrix_depths[matrix_index(type, modulator, carrier)] =
+							std::isfinite(value) ? std::clamp(value, 0.0f, 1.0f)
+												 : 0.0f;
+					}
+				}
+			}
+		}
+		else if (state.starts_with(MODULATOR_DATA_STRING))
 		{
 			state.remove_prefix(MODULATOR_DATA_STRING.size());
 			uint32_t id = 0;

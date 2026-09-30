@@ -13,7 +13,8 @@ namespace
 constexpr float LABEL_PROPORTION = 0.3f;
 } // namespace
 
-WaveformBulkEditor::WaveformBulkEditor(Widget* parent, StateManager& state_mgr) :
+WaveformBulkEditor::WaveformBulkEditor(Widget* parent,
+									   StateManager& state_mgr) :
 	GridContainer(parent),
 	state_manager(state_mgr),
 	callback(nullptr),
@@ -21,10 +22,10 @@ WaveformBulkEditor::WaveformBulkEditor(Widget* parent, StateManager& state_mgr) 
 	wav_amount_is_count(false),
 	selected_morph_type(0)
 {
-	add_row(1, 0, 0, 26, 34);
-	add_row(4, 0, 0, 100, 0);
-	add_row(1, 0, 0, 30, 38);
-	add_column(1, 0, 0, 0, 0);
+	add_row(1, 2, 3, 0, 0);
+	add_row(2, 0, 0, 0, 0);
+	add_row(1, 0, 2, 0, 0);
+	add_column(1, 2, 2, 0, 0);
 
 	op_selector = new Selector(this);
 	op_selector->add_option("Math");
@@ -35,9 +36,10 @@ WaveformBulkEditor::WaveformBulkEditor(Widget* parent, StateManager& state_mgr) 
 
 	// Math group
 	math_group = new GridContainer(this);
-	math_group->add_row(1, 0, 0, 26, 34);
-	math_group->add_row(1, 0, 0, 26, 34);
-	math_group->add_row(1, 0, 0, 26, 34);
+	math_group->add_row(1, 0, 0, 0, 0);
+	math_group->add_row(1, 0, 0, 0, 0);
+	math_group->add_row(1, 0, 0, 0, 0);
+	math_group->add_row(1, 0, 0, 0, 0);
 	math_group->add_column(1, 0, 0, 0, 0);
 	math_group->add_column(2, 0, 0, 0, 0);
 	put(math_group, 1, 0);
@@ -66,10 +68,10 @@ WaveformBulkEditor::WaveformBulkEditor(Widget* parent, StateManager& state_mgr) 
 
 	// WAV group
 	wav_group = new GridContainer(this);
-	wav_group->add_row(1, 0, 0, 26, 34);
-	wav_group->add_row(1, 0, 0, 26, 34);
-	wav_group->add_row(1, 0, 0, 26, 34);
-	wav_group->add_row(1, 0, 0, 26, 34);
+	wav_group->add_row(1, 0, 0, 0, 0);
+	wav_group->add_row(1, 0, 0, 0, 0);
+	wav_group->add_row(1, 0, 0, 0, 0);
+	wav_group->add_row(1, 0, 0, 0, 0);
 	wav_group->add_column(3, 0, 0, 0, 0);
 	wav_group->add_column(1, 0, 0, 0, 0);
 	put(wav_group, 1, 0);
@@ -102,15 +104,17 @@ WaveformBulkEditor::WaveformBulkEditor(Widget* parent, StateManager& state_mgr) 
 	wav_amount_editor->set_default_value(2048);
 	wav_group->put(wav_amount_editor, 3, 0, 1, 2);
 
-	wav_amount_mode_selector->select(1, false); // default: Width, matches cr42ynth
+	wav_amount_mode_selector->select(1,
+									 false); // default: Width, matches cr42ynth
 	update_wav_amount_label();
 
 	// Morph group
 	morph_group = new GridContainer(this);
-	morph_group->add_row(1, 0, 0, 26, 34);
-	morph_group->add_row(1, 0, 0, 26, 34);
-	morph_group->add_row(1, 0, 0, 26, 34);
+	morph_group->add_row(1, 0, 0, 0, 0);
+	morph_group->add_row(1, 0, 0, 0, 0);
+	morph_group->add_row(1, 0, 0, 0, 0);
 	morph_group->add_column(1, 0, 0, 0, 0);
+	morph_group->add_row(1, 0, 0, 0, 0);
 	put(morph_group, 1, 0);
 
 	morph_start_editor = new IntEditor(morph_group);
@@ -211,8 +215,10 @@ void WaveformBulkEditor::on_press(Button* const button)
 			break;
 		case 1:
 		{
-			int amount = wav_amount_is_count ? wav_amount_editor->get_value() : -1;
-			int width = wav_amount_is_count ? -1 : wav_amount_editor->get_value();
+			int amount =
+				wav_amount_is_count ? wav_amount_editor->get_value() : -1;
+			int width =
+				wav_amount_is_count ? -1 : wav_amount_editor->get_value();
 			callback->on_bulk_wav(wav_start_editor->get_value(),
 								  amount,
 								  width,

@@ -9,15 +9,15 @@ ModulatorEditor::ModulatorEditor(Widget* parent, StateManager& state_mgr) :
 	GridContainer(parent),
 	model(state_mgr.get_modulation())
 {
-	add_row(1, 0, 0, 100, 0);
-	add_column(4, 0, 0, 170, 0);
-	add_column(12, 0, 0, 200, 0);
-	add_column(4, 0, 0, 150, 0);
+	add_row(1, 0, 0, 0, 0);
+	add_column(4, 0, 0, 0, 0);
+	add_column(12, 0, 0, 0, 0);
+	add_column(4, 0, 0, 0, 0);
 
 	// left: source list with Add/Remove underneath
 	list_column = new GridContainer(this);
-	list_column->add_row(1, 0, 0, 60, 0);
-	list_column->add_row(0.1f, 0, 0, 26, 34);
+	list_column->add_row(1, 0, 0, 0, 0);
+	list_column->add_row(0.1f, 0, 0, 0, 0);
 	list_column->add_column(1, 0, 0, 0, 0);
 	put(list_column, 0, 0);
 
@@ -86,7 +86,8 @@ void ModulatorEditor::on_press(Button* const button)
 void ModulatorEditor::on_modulation_changed()
 {
 	list_scroll->set_scroll_area(0, source_list->get_content_height());
-	remove_button->set_enabled(model.has_modulator(model.get_selected_modulator()));
+	remove_button->set_enabled(
+		model.has_modulator(model.get_selected_modulator()));
 	repaint();
 }
 

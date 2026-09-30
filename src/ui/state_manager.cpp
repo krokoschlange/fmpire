@@ -158,6 +158,18 @@ void StateManager::open_file_browser(FileBrowserCallback callback)
 	ui->openFileBrowser();
 }
 
+void StateManager::open_file_browser(FileBrowserCallback callback,
+									 const bool saving,
+									 const char* default_name)
+{
+	file_browser_callback = callback;
+
+	DISTRHO_NAMESPACE::FileBrowserOptions options;
+	options.saving = saving;
+	options.defaultName = default_name;
+	ui->openFileBrowser(options);
+}
+
 void StateManager::on_file_browser_selected(const char* filename)
 {
 	if (file_browser_callback)

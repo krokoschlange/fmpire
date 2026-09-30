@@ -3,6 +3,7 @@
 
 #include "DistrhoUI.hpp"
 #include "fmpire_window.h"
+#include "piano_keyboard.h"
 #include "selector.h"
 
 #include "state_manager.h"
@@ -12,12 +13,16 @@ USE_NAMESPACE_DISTRHO
 namespace fmpire
 {
 class GridContainer;
+class KeyboardBar;
 class OscillatorPage;
 class RelativeContainer;
 class SourceListPage;
 class WavetableEditor;
 
-class FMpireUI : public UI, public FMpireWindow, public Selector::Callback
+class FMpireUI : public UI,
+				 public FMpireWindow,
+				 public Selector::Callback,
+				 public PianoKeyboard::Callback
 {
 public:
 	FMpireUI();
@@ -42,6 +47,12 @@ protected:
 					 const int index,
 					 const std::string& option) override;
 
+	void on_key_pressed(PianoKeyboard* const keyboard,
+						const int note,
+						const int velocity) override;
+	void on_key_released(PianoKeyboard* const keyboard,
+						 const int note) override;
+
 private:
 	StateManager state_manager;
 	Ref<GridContainer> grid;
@@ -52,6 +63,7 @@ private:
 	Ref<SourceListPage> fx_page;
 
 	Ref<WavetableEditor> wavetable_editor;
+	Ref<KeyboardBar> keyboard_bar;
 };
 
 } // namespace fmpire

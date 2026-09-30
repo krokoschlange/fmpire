@@ -30,26 +30,26 @@ WavetableEditor::WavetableEditor(Widget* parent, StateManager& state_mgr) :
 {
 	state_manager.set_wavetable_editor(this);
 
-	add_row(2, 0, 0, 50, 0);
-	add_row(1, 0, 0, 25, 0);
-	add_row(1, 0, 0, 25, 0);
-	add_row(2, 0, 0, 25, 0);
-	add_row(12, 0, 0, 100, 0);
-	add_row(1, 0, 0, 36, 0);  // grid-config toolbar, between canvas and harmonic editor
-	add_row(8, 0, 0, 50, 0);
-	add_row(2, 0, 0, 50, 0);
+	add_row(2, 0, 0, 0, 0);
+	add_row(1, 0, 0, 0, 0);
+	add_row(1, 0, 0, 0, 0);
+	add_row(2, 0, 0, 0, 0);
+	add_row(12, 0, 0, 0, 0);
+	add_row(1, 0, 0, 36, 0); // grid-config toolbar, between canvas and harmonic editor
+	add_row(8, 0, 0, 0, 0);
+	add_row(2, 0, 0, 0, 0);
 
-	add_column(2, 0, 0, 25, 0);
-	add_column(2, 0, 0, 25, 0);
-	add_column(12, 0, 0, 100, 0);
-	add_column(4, 0, 0, 50, 0);
+	add_column(2, 0, 0, 0, 0);
+	add_column(2, 0, 0, 0, 0);
+	add_column(12, 0, 0, 0, 0);
+	add_column(4, 0, 0, 0, 0);
 
 	left_column = new GridContainer(this);
-	left_column->add_row(1, 0, 0, 40, 0);   // oscillator selector
-	left_column->add_row(1, 0, 0, 70, 0);   // tools panel
-	left_column->add_row(1, 0, 0, 90, 0);   // part panel
-	left_column->add_row(1, 0, 0, 190, 0);  // bulk-ops panel
-	left_column->add_row(20, 0, 0, 0, 0);   // spacer
+	left_column->add_row(1, 0, 0, 0, 0);    // oscillator selector
+	left_column->add_row(5, 8, 0, 0, 0);   // tools panel
+	left_column->add_row(4, 8, 0, 0, 0); // part panel
+	left_column->add_row(6, 8, 0, 0, 0);   // bulk-ops panel
+	left_column->add_row(0, 8, 0, 0, 0);    // spacer
 	left_column->add_column(1, 0, 0, 0, 0);
 	put(left_column, 0, 0, 8, 2);
 
@@ -64,8 +64,11 @@ WavetableEditor::WavetableEditor(Widget* parent, StateManager& state_mgr) :
 
 	tools_panel_border = new Border(left_column);
 	tools_panel_grid = new GridContainer(tools_panel_border);
-	tools_panel_grid->add_row(2, 0, 0, 30, 0);
-	tools_panel_grid->add_row(1, 0, 0, 28, 36);
+	tools_panel_grid->add_row(2, 0, 0, 0, 0);
+	tools_panel_grid->add_row(1, 0, 0, 0, 0);
+	tools_panel_grid->add_row(1, 0, 0, 0, 0);
+	tools_panel_grid->add_row(1, 0, 0, 0, 0);
+	tools_panel_grid->add_row(1, 0, 0, 0, 0);
 	tools_panel_grid->add_column(1, 0, 0, 0, 0);
 	tools_panel_grid->add_column(1, 0, 0, 0, 0);
 	left_column->put(tools_panel_border, 1, 0);
@@ -88,11 +91,31 @@ WavetableEditor::WavetableEditor(Widget* parent, StateManager& state_mgr) :
 	redo_button->set_callback(this);
 	tools_panel_grid->put(redo_button, 1, 1);
 
+	to_harmonics_button = new Button(tools_panel_grid);
+	to_harmonics_button->set_text("To HARM");
+	to_harmonics_button->set_callback(this);
+	tools_panel_grid->put(to_harmonics_button, 2, 0);
+
+	to_harmonics_hq_button = new Button(tools_panel_grid);
+	to_harmonics_hq_button->set_text("To HARM HQ");
+	to_harmonics_hq_button->set_callback(this);
+	tools_panel_grid->put(to_harmonics_hq_button, 2, 1);
+
+	to_samples_button = new Button(tools_panel_grid);
+	to_samples_button->set_text("To SMPL");
+	to_samples_button->set_callback(this);
+	tools_panel_grid->put(to_samples_button, 3, 0, 1, 2);
+
+	export_wav_button = new Button(tools_panel_grid);
+	export_wav_button->set_text("Export WAV");
+	export_wav_button->set_callback(this);
+	tools_panel_grid->put(export_wav_button, 4, 0, 1, 2);
+
 	part_panel_border = new Border(left_column);
 	part_panel_grid = new GridContainer(part_panel_border);
-	part_panel_grid->add_row(1, 0, 0, 30, 0);
-	part_panel_grid->add_row(2, 0, 0, 50, 0);
-	part_panel_grid->add_column(1, 0, 0, 0, 0);
+	part_panel_grid->add_row(3, 2, 3, 0, 0);
+	part_panel_grid->add_row(7, 0, 2, 0, 0);
+	part_panel_grid->add_column(1, 2, 2, 0, 0);
 	left_column->put(part_panel_border, 2, 0);
 
 	part_selector = new IntEditor(part_panel_grid);
@@ -176,7 +199,8 @@ void WavetableEditor::select_oscillator(const size_t osc)
 	selected_oscillator = osc;
 	oscillator_selector->set_value(osc + 1);
 	wavetable = state_manager.get_wavetable_creator(osc);
-	waveform_selector->set_wavetable(state_manager.get_wavetable(osc));
+	waveform_selector->set_wavetable(state_manager.get_wavetable(osc),
+									 wavetable);
 	waveform_editor->set_osc_index(osc);
 	waveform_editor->set_waveform(wavetable->get_waveform(0));
 	spectrum_view->set_waveform(wavetable->get_waveform(0));
@@ -186,6 +210,7 @@ void WavetableEditor::select_oscillator(const size_t osc)
 		history[osc].reset(wavetable->get_state());
 	}
 	update_undo_redo_buttons();
+	update_tool_states();
 
 	repaint();
 }
@@ -260,6 +285,22 @@ void WavetableEditor::on_press(Button* const button)
 	{
 		redo();
 	}
+	else if (button == to_harmonics_button)
+	{
+		convert_to_harmonics(false);
+	}
+	else if (button == to_harmonics_hq_button)
+	{
+		convert_to_harmonics(true);
+	}
+	else if (button == to_samples_button)
+	{
+		convert_to_samples();
+	}
+	else if (button == export_wav_button)
+	{
+		export_wavetable();
+	}
 }
 
 void WavetableEditor::on_select(WaveformSelector* const selector,
@@ -267,6 +308,7 @@ void WavetableEditor::on_select(WaveformSelector* const selector,
 {
 	waveform_editor->set_waveform(wavetable->get_waveform(selected));
 	spectrum_view->set_waveform(wavetable->get_waveform(selected));
+	update_tool_states();
 }
 
 void WavetableEditor::on_waveform_moved(WaveformSelector* const selector,
@@ -277,22 +319,35 @@ void WavetableEditor::on_waveform_moved(WaveformSelector* const selector,
 
 	wavetable->remove_waveform(start);
 	wavetable->insert_waveform(end, waveform);
+	const bool baked = wavetable->bake_orphaned_interpolated();
+	// refreshes the waveform indices and the interpolated waveforms
+	wavetable->update();
 
 	state_manager.on_wavetable_edited(selected_oscillator);
 
-	uint32_t idx = start;
-	std::string state =
-		encode_base64(reinterpret_cast<uint8_t*>(&idx), sizeof(idx));
-	state_manager.set_state(KEY_OSC_PREFIX + std::to_string(selected_oscillator)
-								+ "/" KEY_OSC_WAVETABLE KEY_WT_REMOVE,
-							state);
+	if (baked)
+	{
+		// the DSP can't know the content the baked waveform had
+		send_all_waveforms();
+	}
+	else
+	{
+		uint32_t idx = start;
+		std::string state =
+			encode_base64(reinterpret_cast<uint8_t*>(&idx), sizeof(idx));
+		state_manager.set_state(KEY_OSC_PREFIX
+									+ std::to_string(selected_oscillator)
+									+ "/" KEY_OSC_WAVETABLE KEY_WT_REMOVE,
+								state);
 
-	idx = end;
-	state = encode_base64(reinterpret_cast<uint8_t*>(&idx), sizeof(idx));
-	state += waveform->get_state();
-	state_manager.set_state(KEY_OSC_PREFIX + std::to_string(selected_oscillator)
-								+ "/" KEY_OSC_WAVETABLE KEY_WT_INSERT,
-							state);
+		idx = end;
+		state = encode_base64(reinterpret_cast<uint8_t*>(&idx), sizeof(idx));
+		state += waveform->get_state();
+		state_manager.set_state(KEY_OSC_PREFIX
+									+ std::to_string(selected_oscillator)
+									+ "/" KEY_OSC_WAVETABLE KEY_WT_INSERT,
+								state);
+	}
 
 	push_history();
 
@@ -303,18 +358,39 @@ void WavetableEditor::remove_waveform(WaveformSelector* const selector,
 									  const size_t waveform)
 {
 	wavetable->remove_waveform(waveform);
+	// an interpolated waveform that is now at the table edge lost its anchor
+	// and becomes a normal waveform (the new anchor of its neighbours)
+	const bool baked = wavetable->bake_orphaned_interpolated();
+	// refreshes the waveform indices and the interpolated waveforms
+	wavetable->update();
 	state_manager.on_wavetable_edited(selected_oscillator);
 
-	uint32_t idx = waveform;
-	std::string state =
-		encode_base64(reinterpret_cast<uint8_t*>(&idx), sizeof(idx));
-	state_manager.set_state(KEY_OSC_PREFIX + std::to_string(selected_oscillator)
-								+ "/" KEY_OSC_WAVETABLE KEY_WT_REMOVE,
-							state);
+	if (baked)
+	{
+		// the DSP can't know the content the baked waveform had
+		send_all_waveforms();
+	}
+	else
+	{
+		uint32_t idx = waveform;
+		std::string state =
+			encode_base64(reinterpret_cast<uint8_t*>(&idx), sizeof(idx));
+		state_manager.set_state(KEY_OSC_PREFIX
+									+ std::to_string(selected_oscillator)
+									+ "/" KEY_OSC_WAVETABLE KEY_WT_REMOVE,
+								state);
+	}
 
 	push_history();
 
 	repaint();
+}
+
+void WavetableEditor::send_all_waveforms()
+{
+	state_manager.set_state(KEY_OSC_PREFIX + std::to_string(selected_oscillator)
+								+ "/" KEY_OSC_WAVETABLE KEY_WT_ALL,
+							wavetable->get_state());
 }
 
 void WavetableEditor::on_waveform_part_selected(WaveformEditor* const editor,
@@ -357,6 +433,10 @@ void WavetableEditor::on_waveform_edited(WaveformEditor* const editor,
 	{
 		push_history();
 	}
+	// the waveform may just have been made editable
+	update_tool_states();
+	// the harmonics may have been changed from outside the harmonic editor
+	harmonic_editor->repaint();
 }
 
 void WavetableEditor::undo()
@@ -411,6 +491,7 @@ void WavetableEditor::refresh_editor_view()
 	WaveformPart* part =
 		(wf && part_idx >= 0) ? wf->get_part_by_idx(part_idx) : nullptr;
 	waveform_editor->select(part, true);
+	update_tool_states();
 
 	repaint();
 }
@@ -426,6 +507,139 @@ void WavetableEditor::update_undo_redo_buttons()
 {
 	undo_button->set_enabled(history[selected_oscillator].undo_possible());
 	redo_button->set_enabled(history[selected_oscillator].redo_possible());
+}
+
+void WavetableEditor::update_tool_states()
+{
+	// interpolated waveforms are derived from their neighbours and can't be
+	// changed until they are made editable
+	const Waveform* wf =
+		wavetable ? wavetable->get_waveform(waveform_selector->get_selected())
+				  : nullptr;
+	const bool editable = wf && !wf->is_interpolated();
+
+	to_harmonics_button->set_enabled(editable);
+	to_harmonics_hq_button->set_enabled(editable);
+	to_samples_button->set_enabled(editable);
+}
+
+void WavetableEditor::convert_to_harmonics(const bool high_quality)
+{
+	if (!wavetable)
+	{
+		return;
+	}
+
+	Waveform* wf = wavetable->get_waveform(waveform_selector->get_selected());
+	if (!wf || wf->is_interpolated())
+	{
+		return;
+	}
+
+	Ref<HarmonicsWaveformPart> part = static_cast<HarmonicsWaveformPart*>(
+		WaveformPart::create(WaveformPart::Type::HARMONIC));
+	part->set_start(0);
+	part->set_end(wf->get_width());
+	part->get_harmonics() = analyze_harmonics(wf->sample_all(), high_quality);
+
+	replace_waveform_parts(wf, part);
+}
+
+void WavetableEditor::convert_to_samples()
+{
+	if (!wavetable)
+	{
+		return;
+	}
+
+	Waveform* wf = wavetable->get_waveform(waveform_selector->get_selected());
+	if (!wf || wf->is_interpolated())
+	{
+		return;
+	}
+
+	Ref<SamplesWaveformPart> part = static_cast<SamplesWaveformPart*>(
+		WaveformPart::create(WaveformPart::Type::SAMPLES));
+	part->set_start(0);
+	part->set_end(wf->get_width());
+	part->get_samples() = wf->sample_all();
+
+	replace_waveform_parts(wf, part);
+}
+
+void WavetableEditor::replace_waveform_parts(Waveform* const wf,
+											 WaveformPart* const part)
+{
+	while (wf->get_part_by_idx(0))
+	{
+		wf->remove_part(static_cast<size_t>(0));
+	}
+	wf->insert_part(part);
+
+	apply_state(wavetable->get_state());
+
+	// the new part is the only one
+	part_selector->set_value(0);
+	refresh_editor_view();
+	push_history();
+}
+
+void WavetableEditor::export_wavetable()
+{
+	if (!wavetable)
+	{
+		return;
+	}
+
+	uint32_t width, height;
+	wavetable->get_size(width, height);
+	if (width == 0 || height == 0)
+	{
+		return;
+	}
+
+	// Snapshot the current wavetable content up front: the dialog is
+	// answered asynchronously and the user may switch oscillators (or edit
+	// the wavetable) before that happens.
+	std::vector<float> samples = wavetable->create_wavetable();
+
+	const std::string default_name =
+		"osc" + std::to_string(selected_oscillator + 1) + "_wavetable.wav";
+
+	state_manager.open_file_browser(
+		[samples = std::move(samples), width](const char* filename)
+		{
+			if (!filename)
+			{
+				return;
+			}
+
+			std::string path = filename;
+			if (path.size() < 4
+				|| path.compare(path.size() - 4, 4, ".wav") != 0)
+			{
+				path += ".wav";
+			}
+
+			SF_INFO info = {};
+			// one cycle per "sample" of a synth-style sample rate keeps each
+			// waveform exactly `width` samples long, as wavetable-importing
+			// hosts (and this plugin's own WAV bulk-import) expect
+			info.samplerate = (int) width;
+			info.channels = 1;
+			info.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
+
+			SNDFILE* file = sf_open(path.c_str(), SFM_WRITE, &info);
+			if (!file)
+			{
+				return;
+			}
+
+			sf_writef_float(file, samples.data(), (sf_count_t) samples.size());
+			sf_close(file);
+		},
+		true,
+		default_name.c_str());
 }
 
 void WavetableEditor::apply_bulk_insert(
@@ -533,7 +747,8 @@ void WavetableEditor::on_bulk_wav(uint32_t start,
 		{
 			float rel_pos = (float) smpl / width;
 			float orig_pos = rel_pos * samples_per_wf;
-			int total_pos = ((int) orig_pos + samples_per_wf * (int) i) * info.channels;
+			int total_pos =
+				((int) orig_pos + samples_per_wf * (int) i) * info.channels;
 			total_pos =
 				std::min<int>(total_pos, info.channels * info.frames - 1);
 			float smpl1 = samples[total_pos];
@@ -560,7 +775,9 @@ void WavetableEditor::on_bulk_wav(uint32_t start,
 	apply_bulk_insert(start, new_waveforms);
 }
 
-void WavetableEditor::on_bulk_crossfade(uint32_t start, uint32_t amount)
+void WavetableEditor::insert_interpolated(const uint32_t start,
+										  const uint32_t amount,
+										  const InterpolationType type)
 {
 	if (!wavetable || amount == 0)
 	{
@@ -574,35 +791,22 @@ void WavetableEditor::on_bulk_crossfade(uint32_t start, uint32_t amount)
 		return;
 	}
 
-	std::vector<float> samples_before =
-		wavetable->get_waveform(start - 1)->sample_all();
-	std::vector<float> samples_after = wavetable->get_waveform(start)->sample_all();
-
+	// The content is derived from the neighbouring waveforms by
+	// WavetableCreator::update_interpolated() (called by apply_bulk_insert).
 	std::vector<Ref<Waveform>> new_waveforms;
-	for (uint32_t i = 1; i <= amount; i++)
+	for (uint32_t i = 0; i < amount; i++)
 	{
-		float t = (float) i / (amount + 1);
-
-		std::vector<float> mixed(width);
-		for (uint32_t smpl = 0; smpl < width; smpl++)
-		{
-			mixed[smpl] = lerp(samples_before[smpl], samples_after[smpl], t);
-		}
-
 		Ref<Waveform> wf = new Waveform();
-		wf->remove_part(0);
-
-		Ref<SamplesWaveformPart> part = static_cast<SamplesWaveformPart*>(
-			WaveformPart::create(WaveformPart::Type::SAMPLES));
-		part->set_start(0);
-		part->set_end(width);
-		part->get_samples() = mixed;
-
-		wf->insert_part(part);
+		wf->set_interpolation(type);
 		new_waveforms.push_back(wf);
 	}
 
 	apply_bulk_insert(start, new_waveforms);
+}
+
+void WavetableEditor::on_bulk_crossfade(uint32_t start, uint32_t amount)
+{
+	insert_interpolated(start, amount, InterpolationType::CROSSFADE);
 }
 
 void WavetableEditor::on_bulk_spectral(uint32_t start,
@@ -610,80 +814,16 @@ void WavetableEditor::on_bulk_spectral(uint32_t start,
 									   bool zero_all,
 									   bool zero_fundamental)
 {
-	if (!wavetable || amount == 0)
-	{
-		return;
-	}
-
-	uint32_t width, height;
-	wavetable->get_size(width, height);
-	if (height < 2 || start == 0 || start > height - 1)
-	{
-		return;
-	}
-
-	std::vector<HarmonicsWaveformPart::Harmonic> harmonics_before =
-		analyze_harmonics(wavetable->get_waveform(start - 1)->sample_all(), true);
-	std::vector<HarmonicsWaveformPart::Harmonic> harmonics_after =
-		analyze_harmonics(wavetable->get_waveform(start)->sample_all(), true);
-
-	size_t harmonic_count =
-		std::max(harmonics_before.size(), harmonics_after.size());
-	harmonics_before.resize(harmonic_count, {0.0f, 0.0f});
-	harmonics_after.resize(harmonic_count, {0.0f, 0.0f});
-
+	InterpolationType type = InterpolationType::SPECTRAL;
 	if (zero_all)
 	{
-		for (auto& h : harmonics_before)
-		{
-			h.phase = 0.0f;
-		}
-		for (auto& h : harmonics_after)
-		{
-			h.phase = 0.0f;
-		}
+		type = InterpolationType::SPECTRAL_ZERO_ALL;
 	}
 	else if (zero_fundamental)
 	{
-		if (harmonics_before.size() > 1)
-		{
-			harmonics_before[1].phase = 0.0f;
-		}
-		if (harmonics_after.size() > 1)
-		{
-			harmonics_after[1].phase = 0.0f;
-		}
+		type = InterpolationType::SPECTRAL_ZERO_FUNDAMENTAL;
 	}
-
-	std::vector<Ref<Waveform>> new_waveforms;
-	for (uint32_t i = 1; i <= amount; i++)
-	{
-		float t = (float) i / (amount + 1);
-
-		std::vector<HarmonicsWaveformPart::Harmonic> mixed(harmonic_count);
-		for (size_t harm = 0; harm < harmonic_count; harm++)
-		{
-			mixed[harm].amplitude = lerp(harmonics_before[harm].amplitude,
-										 harmonics_after[harm].amplitude,
-										 t);
-			mixed[harm].phase =
-				lerp(harmonics_before[harm].phase, harmonics_after[harm].phase, t);
-		}
-
-		Ref<Waveform> wf = new Waveform();
-		wf->remove_part(0);
-
-		Ref<HarmonicsWaveformPart> part = static_cast<HarmonicsWaveformPart*>(
-			WaveformPart::create(WaveformPart::Type::HARMONIC));
-		part->set_start(0);
-		part->set_end(width);
-		part->get_harmonics() = mixed;
-
-		wf->insert_part(part);
-		new_waveforms.push_back(wf);
-	}
-
-	apply_bulk_insert(start, new_waveforms);
+	insert_interpolated(start, amount, type);
 }
 
 void WavetableEditor::onDisplay()

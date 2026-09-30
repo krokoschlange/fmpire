@@ -5,6 +5,8 @@
 #include "wavetable.h"
 #include "wavetable_creator.h"
 
+#include <algorithm>
+
 namespace fmpire
 {
 
@@ -23,10 +25,42 @@ WavetableView::WavetableView(Widget* parent,
 	edit_button->set_text("Edit");
 	edit_button->set_callback(this);
 	put(edit_button, 0.80, 0.05, 0.15, 0.15);
+
+	state_manager.get_modulation().add_listener(this);
 }
 
 WavetableView::~WavetableView() noexcept
 {
+	state_manager.get_modulation().remove_listener(this);
+}
+
+void WavetableView::set_wavetable_pos(float wt_pos)
+{
+	wavetable_pos = wt_pos;
+	repaint();
+}
+
+void WavetableView::on_modulation_changed()
+{
+	repaint();
+}
+
+void WavetableView::on_route_meter_changed(const size_t slot)
+{
+	const RouteSettings* route = state_manager.get_modulation().get_route(slot);
+	if (route && route->target == TargetType::OSC_WT_POS
+		&& route->target_object == index)
+	{
+		repaint();
+	}
+}
+
+float WavetableView::current_pos() const
+{
+	const float offset = state_manager.get_modulation().get_target_meter(
+		TargetType::OSC_WT_POS,
+		index);
+	return std::clamp(wavetable_pos + offset, 0.0f, 1.0f);
 }
 
 void WavetableView::on_press(Button* const button)
@@ -71,14 +105,14 @@ void WavetableView::onDisplay()
 	const GraphicsContext& context = getGraphicsContext();
 	float radius = theme->corner_radius;
 	float line_width = theme->line_very_thin;
-
+	const float position = current_pos();
 
 	if (single)
 	{
 		theme->highlight.setFor(context);
 		draw_waveform(context,
 					  wavetable,
-					  wavetable_pos,
+					  position,
 					  0,
 					  0,
 					  getWidth(),
@@ -109,9 +143,9 @@ void WavetableView::onDisplay()
 		theme->highlight.setFor(context);
 		draw_waveform(context,
 					  wavetable,
-					  wavetable_pos,
-					  wavetable_pos * getWidth() * 0.3,
-					  (1 - wavetable_pos) * getHeight() * 0.5,
+					  position,
+					  position * getWidth() * 0.3,
+					  (1 - position) * getHeight() * 0.5,
 					  getWidth() * 0.7,
 					  getHeight() * 0.5);
 	}

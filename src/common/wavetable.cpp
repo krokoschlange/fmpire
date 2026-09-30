@@ -27,13 +27,16 @@ float Wavetable::sample(const float position,
 		return 0;
 	}
 
+	// any phase is fine (phase modulation goes below 0 and above 1)
+	const float wrapped_phase = phase - std::floor(phase);
+
 	size_t pos_smpl, phase_smpl;
-	get_sample_position(position, phase, pos_smpl, phase_smpl);
+	get_sample_position(position, wrapped_phase, pos_smpl, phase_smpl);
 	float sample = 0;
 	if (interp_waves && interp_phase)
 	{
 		float pos_lerp = get_position_interpolation_factor(position);
-		float phase_lerp = get_phase_interpolation_factor(phase);
+		float phase_lerp = get_phase_interpolation_factor(wrapped_phase);
 		float sample00 = read(pos_smpl, phase_smpl);
 		float sample01 = read(pos_smpl, phase_smpl + 1);
 		float sample10 = read(pos_smpl + 1, phase_smpl);
@@ -51,7 +54,7 @@ float Wavetable::sample(const float position,
 	}
 	else if (interp_phase)
 	{
-		float phase_lerp = get_phase_interpolation_factor(phase);
+		float phase_lerp = get_phase_interpolation_factor(wrapped_phase);
 		float sample00 = read(pos_smpl, phase_smpl);
 		float sample01 = read(pos_smpl, phase_smpl + 1);
 		sample = lerp(sample00, sample01, phase_lerp);

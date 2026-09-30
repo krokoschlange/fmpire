@@ -20,7 +20,8 @@ void beats_to_fraction(const float beats, int& numerator, int& denominator)
 		const int candidate_numerator =
 			static_cast<int>(std::lround(beats / 4.0f * candidate));
 		if (candidate_numerator >= 1
-			&& std::fabs(candidate_numerator * 4.0f / candidate - beats) < 1e-3f)
+			&& std::fabs(candidate_numerator * 4.0f / candidate - beats)
+				   < 1e-3f)
 		{
 			numerator = candidate_numerator;
 			denominator = candidate;
@@ -44,18 +45,17 @@ ModulatorSettingsPanel::ModulatorSettingsPanel(
 	beats_numerator(1),
 	beats_denominator(4)
 {
-	add_row(1, 0, 0, 120, 0);  // shape
-	add_row(1, 0, 0, 84, 0);   // timing
-	add_row(1, 0, 0, 58, 0);   // grid
-	add_row(10, 0, 0, 0, 0);   // spacer
+	add_row(4, 0, 0, 0, 0); // shape
+	add_row(3, 0, 0, 0, 0);  // timing
+	add_row(2, 0, 0, 0, 0);  // grid
 	add_column(1, 0, 0, 0, 0);
 
 	// Shape
 	shape_border = new Border(this);
 	shape_grid = new GridContainer(shape_border);
-	shape_grid->add_row(1, 0, 0, 26, 34);
-	shape_grid->add_row(1, 0, 0, 26, 34);
-	shape_grid->add_row(3, 0, 0, 48, 0);
+	shape_grid->add_row(1, 0, 0, 0, 0);
+	shape_grid->add_row(2, 0, 0, 0, 0);
+	shape_grid->add_row(1, 0, 0, 0, 0);
 	shape_grid->add_column(1, 0, 0, 0, 0);
 	shape_grid->add_column(1, 0, 0, 0, 0);
 	put(shape_border, 0, 0);
@@ -71,27 +71,27 @@ ModulatorSettingsPanel::ModulatorSettingsPanel(
 	sustain_editor->set_limits(0, 1);
 	sustain_editor->set_label("Sustain pt");
 	sustain_editor->set_callback(this);
-	shape_grid->put(sustain_editor, 1, 0, 1, 2);
+	shape_grid->put(sustain_editor, 2, 0, 1, 2);
 
 	phase_knob = new Knob(shape_grid);
 	phase_knob->set_label("PHASE");
 	phase_knob->set_tooltip("Phase Offset");
 	phase_knob->set_callback(this);
-	shape_grid->put(phase_knob, 2, 0);
+	shape_grid->put(phase_knob, 1, 1);
 
 	amount_knob = new Knob(shape_grid);
 	amount_knob->set_label("AMT");
 	amount_knob->set_tooltip("Amount");
 	amount_knob->set_default_value(1.0f);
 	amount_knob->set_callback(this);
-	shape_grid->put(amount_knob, 2, 1);
+	shape_grid->put(amount_knob,1, 0);
 
 	// Timing
 	timing_border = new Border(this);
 	timing_grid = new GridContainer(timing_border);
-	timing_grid->add_row(1, 0, 0, 26, 34);
-	timing_grid->add_row(1, 0, 0, 26, 34);
-	timing_grid->add_row(1, 0, 0, 26, 34);
+	timing_grid->add_row(1, 0, 0, 0, 0);
+	timing_grid->add_row(1, 0, 0, 0, 0);
+	timing_grid->add_row(1, 0, 0, 0, 0);
 	timing_grid->add_column(1, 0, 0, 0, 0);
 	put(timing_border, 1, 0);
 
@@ -136,8 +136,8 @@ ModulatorSettingsPanel::ModulatorSettingsPanel(
 	// Grid
 	grid_border = new Border(this);
 	grid_grid = new GridContainer(grid_border);
-	grid_grid->add_row(1, 0, 0, 26, 34);
-	grid_grid->add_row(1, 0, 0, 26, 34);
+	grid_grid->add_row(1, 0, 0, 0, 0);
+	grid_grid->add_row(1, 0, 0, 0, 0);
 	grid_grid->add_column(1, 0, 0, 0, 0);
 	put(grid_border, 2, 0);
 
@@ -184,7 +184,8 @@ void ModulatorSettingsPanel::refresh()
 		return;
 	}
 
-	const ModulationModel::ModulatorEntry& entry = model.get_modulator(modulator_id);
+	const ModulationModel::ModulatorEntry& entry =
+		model.get_modulator(modulator_id);
 	settings = entry.settings;
 
 	refreshing = true;
@@ -195,7 +196,8 @@ void ModulatorSettingsPanel::refresh()
 	phase_knob->setVisible(!is_envelope);
 
 	sustain_editor->set_limits(0, static_cast<int>(entry.curve.size()) - 1);
-	sustain_editor->set_value(static_cast<int>(entry.curve.get_sustain_index()));
+	sustain_editor->set_value(
+		static_cast<int>(entry.curve.get_sustain_index()));
 	phase_knob->set_value(settings.phase_offset, false);
 	amount_knob->set_value(settings.amount, false);
 	amount_knob->set_mod_target(model, TargetType::MOD_AMOUNT, modulator_id);
@@ -239,7 +241,8 @@ void ModulatorSettingsPanel::on_selected(Selector* const selector,
 
 	if (selector == type_selector)
 	{
-		settings.type = index == 1 ? ModulatorType::LFO : ModulatorType::ENVELOPE;
+		settings.type =
+			index == 1 ? ModulatorType::LFO : ModulatorType::ENVELOPE;
 		commit();
 	}
 	else if (selector == timing_selector)

@@ -1,6 +1,7 @@
 #ifndef WAVEFORM_PART_EDITOR_H_INCLUDED
 #define WAVEFORM_PART_EDITOR_H_INCLUDED
 
+#include "button.h"
 #include "grid_container.h"
 #include "selector.h"
 #include "text_entry.h"
@@ -12,11 +13,15 @@ class WaveformPart;
 class WaveformPartEditor :
 	public GridContainer,
 	public Selector::Callback,
-	public TextEntry::Callback
+	public TextEntry::Callback,
+	public Button::Callback
 {
 public:
 	WaveformPartEditor(Widget* parent);
 	virtual ~WaveformPartEditor() noexcept;
+
+	virtual void on_press(Button* const button) override;
+	virtual void on_release(Button* const button) override {}
 
 	virtual void on_selected(Selector* const selector,
 							 const int index,
@@ -39,6 +44,7 @@ private:
 	Ref<Selector> type_selector;
 	Ref<TextEntry> function_editor;
 	Ref<Selector> harmonic_type_selector;
+	Ref<Button> normalize_button;
 
 	Ref<WaveformPart> part;
 

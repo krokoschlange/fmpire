@@ -35,6 +35,13 @@ SourceListPage::~SourceListPage() noexcept
 	model.remove_listener(this);
 }
 
+void SourceListPage::set_body(FMpireWidget* const new_body)
+{
+	body_border->hide();
+	body = new_body;
+	put(body, 0, 1);
+}
+
 void SourceListPage::on_modulation_changed()
 {
 	list_scroll->set_scroll_area(0, source_list->get_content_height());

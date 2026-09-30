@@ -73,6 +73,14 @@ void CurveEditor::on_modulation_changed()
 	repaint();
 }
 
+void CurveEditor::on_playhead_changed(const size_t id)
+{
+	if (id == modulator_id)
+	{
+		repaint();
+	}
+}
+
 float CurveEditor::ui_scale() const
 {
 	return std::clamp(std::min(getWidth(), getHeight()) / reference_size,
@@ -202,7 +210,7 @@ void CurveEditor::onDisplay()
 
 	if (!model.has_modulator(modulator_id))
 	{
-		theme->foreground.setFor(context);
+		Color(255, 255, 255).setFor(context);
 		draw_text(context,
 				  "Add an envelope or LFO",
 				  theme->font.c_str(),
@@ -233,6 +241,16 @@ void CurveEditor::onDisplay()
 		}
 		theme->highlight.setFor(context);
 		draw_line_string(context, line, theme->line_thin);
+
+		// where the newest voice currently is
+		const float playhead = model.get_playhead(modulator_id);
+		if (playhead >= 0.0f)
+		{
+			const float px = to_pixels(std::min(playhead, 1.0f), 0).getX();
+			Color(255, 150, 40).setFor(context);
+			Line<float> playhead_line(px, padding(), px, getHeight() - padding());
+			playhead_line.draw(context, theme->line_thin);
+		}
 
 		for (size_t index = 0; index + 1 < curve.size(); index++)
 		{

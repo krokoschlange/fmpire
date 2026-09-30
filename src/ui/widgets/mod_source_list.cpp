@@ -332,7 +332,7 @@ void ModSourceList::draw_tile(const GraphicsContext& context,
 						 1);
 	}
 
-	theme->highlight.setFor(context);
+	Color(255, 255, 255).setFor(context);
 	draw_text(context,
 			  tiles[tile].label.c_str(),
 			  theme->font.c_str(),
@@ -409,7 +409,7 @@ void ModSourceList::draw_row(const GraphicsContext& context,
 		draw_line_string(context, line, 1);
 	}
 
-	theme->highlight.setFor(context);
+	Color(255, 255, 255).setFor(context);
 	draw_text(context,
 			  row.label.c_str(),
 			  theme->font.c_str(),
@@ -443,7 +443,7 @@ void ModSourceList::draw_row(const GraphicsContext& context,
 						 theme->corner_radius,
 						 1);
 	}
-	theme->highlight.setFor(context);
+	Color(255, 255, 255).setFor(context);
 	draw_text(context,
 			  "M",
 			  theme->font.c_str(),

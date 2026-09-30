@@ -7,6 +7,7 @@ namespace fmpire
 Button::Button(Widget* parent) :
 	FMpireWidget(parent),
 	state(State::NORMAL),
+	is_toggle(false),
 	text(""),
 	text_y_scale(0.5),
 	callback(nullptr),

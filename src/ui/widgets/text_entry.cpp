@@ -106,6 +106,7 @@ void TextEntry::onDisplay()
 					 theme->corner_radius,
 					 theme->line_very_thin);
 
+	Color(255, 255, 255).setFor(context);
 	draw_text(context,
 			  get_text_utf8().c_str(),
 			  theme->font.c_str(),

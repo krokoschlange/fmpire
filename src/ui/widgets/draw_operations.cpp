@@ -226,12 +226,7 @@ void draw_text(const GraphicsContext& context,
 		y_offset = font_xtents.ascent
 				   - vertical * (font_xtents.ascent + font_xtents.descent) / 2;
 	}
-	cairo_set_source_rgb(handle, 1, 0, 0);
-	/*cairo_rectangle(handle, x + x_offset, y + (xtents.height +
-	xtents.y_bearing)- xtents.height + y_offset, xtents.x_advance,
-	xtents.height); cairo_fill(handle);*/
 	cairo_move_to(handle, x + x_offset, y + y_offset);
-	cairo_set_source_rgb(handle, 1, 1, 1);
 	cairo_show_text(handle, text);
 }
 
@@ -316,6 +311,32 @@ void draw_line_string(const GraphicsContext& context,
 	}
 	cairo_set_line_width(handle, line_width);
 	cairo_stroke(handle);
+}
+
+void fill_hatch(const GraphicsContext& context,
+				float left,
+				float top,
+				float width,
+				float height,
+				float spacing,
+				float line_width)
+{
+	cairo_t* const handle = ((const CairoGraphicsContext&) context).handle;
+
+	cairo_save(handle);
+	cairo_new_path(handle);
+	cairo_rectangle(handle, left, top, width, height);
+	cairo_clip(handle);
+
+	cairo_new_path(handle);
+	for (float offset = -height; offset < width; offset += spacing)
+	{
+		cairo_move_to(handle, left + offset, top + height);
+		cairo_line_to(handle, left + offset + height, top);
+	}
+	cairo_set_line_width(handle, line_width);
+	cairo_stroke(handle);
+	cairo_restore(handle);
 }
 
 #endif

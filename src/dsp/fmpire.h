@@ -12,6 +12,7 @@
 #include "voice.h"
 
 #include <array>
+#include <atomic>
 #include <mutex>
 #include <optional>
 #include <queue>
@@ -37,8 +38,12 @@ protected:
 	uint32_t getVersion() const override;
 	int64_t getUniqueId() const override;
 
-	// The macros are the only DPF parameters: host-automatable modulation
-	// sources that can be routed to any target like an LFO or envelope.
+	// The first FMPIRE_MACRO_COUNT parameters are the macros: host-automatable
+	// modulation sources that can be routed to any target like an LFO or
+	// envelope. After them come FMPIRE_METER_COUNT hidden output parameters,
+	// one per route slot, that report to the UI how far the route's target is
+	// currently modulated, and FMPIRE_PLAYHEAD_COUNT ones for the playhead of
+	// each modulator (see publish_meters).
 	void initParameter(uint32_t index, Parameter& parameter) override;
 	float getParameterValue(uint32_t index) const override;
 	void setParameterValue(uint32_t index, float value) override;
@@ -76,6 +81,16 @@ private:
 
 	std::array<Voice*, 128> voice_map;
 	std::queue<Voice*> free_voice_queue;
+
+	// the voice the modulation display follows
+	Voice* last_started_voice;
+	std::array<std::atomic<float>, FMPIRE_METER_COUNT> route_meters;
+	std::array<std::atomic<float>, FMPIRE_PLAYHEAD_COUNT> playheads;
+
+	// Audio thread, after the voices ran: reports the modulation for each route
+	// slot and the playhead of each modulator in the newest voice (0 and -1
+	// when there is no voice).
+	void publish_meters(const Patch& patch);
 
 	TripleBuffer<Patch> patches;
 

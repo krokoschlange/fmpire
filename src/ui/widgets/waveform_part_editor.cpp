@@ -11,9 +11,9 @@ namespace fmpire
 WaveformPartEditor::WaveformPartEditor(Widget* parent) :
 	GridContainer(parent)
 {
-	add_row(1, 0, 0, 0, 20);
-	add_row(1, 0, 0, 0, 20);
-	add_row(1, 0, 0, 0, 0);
+	add_row(3, 0, 3, 0, 0);
+	add_row(2, 0, 0, 0, 0);
+	add_row(2, 0, 0, 0, 0);
 
 	add_column(1, 0, 0, 0, 0);
 
@@ -29,16 +29,37 @@ WaveformPartEditor::WaveformPartEditor(Widget* parent) :
 	put(function_editor, 1, 0);
 
 	harmonic_type_selector = new Selector(this);
-	harmonic_type_selector->add_option("Sin");
-	harmonic_type_selector->add_option("Tri");
-	harmonic_type_selector->add_option("Saw");
-	harmonic_type_selector->add_option("Sqr");
+	harmonic_type_selector->add_option("SIN");
+	harmonic_type_selector->add_option("TRI");
+	harmonic_type_selector->add_option("SAW");
+	harmonic_type_selector->add_option("SQR");
 	harmonic_type_selector->set_callback(this);
 	put(harmonic_type_selector, 1, 0);
+
+	normalize_button = new Button(this);
+	normalize_button->set_text("Normalize");
+	normalize_button->set_callback(this);
+	put(normalize_button, 2, 0);
 }
 
 WaveformPartEditor::~WaveformPartEditor() noexcept
 {
+}
+
+void WaveformPartEditor::on_press(Button* const button)
+{
+	if (button == normalize_button)
+	{
+		if (part && part->get_type() == WaveformPart::Type::HARMONIC)
+		{
+			static_ref_cast<HarmonicsWaveformPart>(part)->normalize();
+
+			if (callback)
+			{
+				callback->on_part_edited(this, part);
+			}
+		}
+	}
 }
 
 void WaveformPartEditor::on_selected(Selector* const selector,
@@ -120,6 +141,7 @@ void WaveformPartEditor::set_part(WaveformPart* const p)
 
 	bool is_harmonic = part && part->get_type() == WaveformPart::Type::HARMONIC;
 	harmonic_type_selector->setVisible(is_harmonic);
+	normalize_button->setVisible(is_harmonic);
 
 	if (is_harmonic)
 	{

@@ -29,6 +29,11 @@ WaveformEditor::WaveformEditor(Widget* parent,
 	grid_y(0),
 	state_manager(state_mgr)
 {
+	make_editable_button = new Button(this);
+	make_editable_button->set_text("Make editable");
+	make_editable_button->set_drawing_normal_bg(true);
+	make_editable_button->set_callback(this);
+	make_editable_button->setVisible(false);
 }
 
 WaveformEditor::~WaveformEditor() noexcept
@@ -37,7 +42,11 @@ WaveformEditor::~WaveformEditor() noexcept
 
 void WaveformEditor::on_press(Button* const button)
 {
-	if (button == delete_button)
+	if (button == make_editable_button)
+	{
+		make_editable();
+	}
+	else if (button == delete_button)
 	{
 		waveform->remove_part(selection);
 		select(nullptr, true);
@@ -48,13 +57,14 @@ void WaveformEditor::on_press(Button* const button)
 
 void WaveformEditor::select(WaveformPart* part, bool trigger_callback)
 {
-	selection = part;
+	selection = is_read_only() ? nullptr : part;
 
 	if (trigger_callback && callback)
 	{
-		callback->on_waveform_part_selected(this, part);
+		callback->on_waveform_part_selected(this, selection);
 	}
 	update_delete_button();
+	update_make_editable_button();
 	repaint();
 }
 
@@ -88,6 +98,15 @@ void WaveformEditor::onDisplay()
 		float line_pos = (float) getHeight() / grid_y * y;
 		line = Line<float>(0, line_pos, getWidth(), line_pos);
 		line.draw(context, theme->line_very_thin);
+	}
+
+	const bool read_only = is_read_only();
+	if (read_only)
+	{
+		Color hatch_color = theme->foreground;
+		hatch_color.alpha = 0.5f;
+		hatch_color.setFor(context, true);
+		fill_hatch(context, 0, 0, getWidth(), getHeight(), 10, 1.5f);
 	}
 
 	std::vector<float> samples;
@@ -195,6 +214,43 @@ void WaveformEditor::onDisplay()
 		line.draw(context, theme->line_thin);
 	}
 
+	if (read_only)
+	{
+		const float bar_height = banner_height();
+		Color bar_color = theme->background;
+		bar_color.alpha = 0.9f;
+		bar_color.setFor(context, true);
+		fill_rounded_box(context,
+						 0,
+						 0,
+						 getWidth(),
+						 bar_height,
+						 theme->corner_radius,
+						 0,
+						 Corner::TOP);
+
+		const std::string text =
+			std::string("Interpolated (")
+			+ interpolation_type_name(waveform->get_interpolation())
+			+ "): follows its neighbouring waveforms, not editable";
+		const float text_width =
+			std::max(0.0f, getWidth() - button_width() - 16);
+		const float text_size = fit_text(context,
+										 text.c_str(),
+										 theme->font.c_str(),
+										 text_width,
+										 bar_height * 0.5f);
+
+		Color(255, 255, 255).setFor(context);
+		draw_text(context,
+				  text.c_str(),
+				  theme->font.c_str(),
+				  text_size,
+				  Anchor::LEFT_CENTER,
+				  8,
+				  bar_height * 0.5f);
+	}
+
 	theme->foreground.setFor(context);
 	draw_rounded_box(context,
 					 0,
@@ -212,7 +268,7 @@ bool WaveformEditor::onMouse(const MouseEvent& event)
 		return true;
 	}
 
-	if (waveform == nullptr)
+	if (waveform == nullptr || is_read_only())
 	{
 		return false;
 	}
@@ -321,11 +377,55 @@ bool WaveformEditor::onMotion(const MotionEvent& event)
 void WaveformEditor::onPositionChanged(const PositionChangedEvent& event)
 {
 	update_delete_button();
+	update_make_editable_button();
 }
 
 void WaveformEditor::onResize(const ResizeEvent& event)
 {
 	update_delete_button();
+	update_make_editable_button();
+}
+
+float WaveformEditor::banner_height() const
+{
+	return std::max(28.0f, getHeight() * 0.09f);
+}
+
+float WaveformEditor::button_width() const
+{
+	return std::min(140.0f, getWidth() * 0.4f);
+}
+
+void WaveformEditor::update_make_editable_button()
+{
+	const bool show = is_read_only();
+	if (make_editable_button->isVisible() != show)
+	{
+		make_editable_button->setVisible(show);
+	}
+	if (!show)
+	{
+		return;
+	}
+
+	make_editable_button->setAbsolutePos(getAbsoluteX() + getWidth() - 4
+											 - button_width(),
+										 getAbsoluteY() + 4);
+	make_editable_button->setSize(button_width(), banner_height() - 8);
+}
+
+void WaveformEditor::make_editable()
+{
+	if (!is_read_only())
+	{
+		return;
+	}
+
+	// the generated part becomes a normal, editable part
+	waveform->set_interpolation(InterpolationType::NONE);
+	update_make_editable_button();
+	on_waveform_updated(true);
+	repaint();
 }
 
 void WaveformEditor::update_delete_button()

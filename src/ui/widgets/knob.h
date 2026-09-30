@@ -21,6 +21,7 @@ public:
 						const size_t target_object);
 
 	virtual void on_modulation_changed() override;
+	virtual void on_route_meter_changed(const size_t slot) override;
 
 	void set_value(float new_value, bool emit_callback = false);
 	void set_default_value(const float val);
@@ -76,6 +77,11 @@ private:
 	bool on_mod_mouse(const MouseEvent& event);
 	bool on_mod_motion(const MotionEvent& event);
 	std::string create_mod_tooltip_string() const;
+	void draw_mod_range(const GraphicsContext& context,
+						const float radius,
+						const float down,
+						const float up,
+						const float width) const;
 
 	std::string create_tooltip_string();
 };

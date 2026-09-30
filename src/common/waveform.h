@@ -13,6 +13,19 @@ namespace fmpire
 
 class WaveformPart;
 
+// Marks a waveform whose content is derived from its neighbours instead of
+// being drawn by the user. See WavetableCreator::update_interpolated().
+enum class InterpolationType : uint32_t
+{
+	NONE = 0,
+	CROSSFADE,
+	SPECTRAL,
+	SPECTRAL_ZERO_FUNDAMENTAL,
+	SPECTRAL_ZERO_ALL,
+};
+
+const char* interpolation_type_name(const InterpolationType type);
+
 class Waveform : public RefCounted
 {
 public:
@@ -44,9 +57,27 @@ public:
 
 	inline uint32_t get_index() const { return index; }
 
+	inline bool is_interpolated() const
+	{
+		return interpolation != InterpolationType::NONE;
+	}
+
+	inline InterpolationType get_interpolation() const { return interpolation; }
+
+	// Setting NONE turns an interpolated waveform into a normal one that keeps
+	// its current (generated) part.
+	inline void set_interpolation(const InterpolationType type)
+	{
+		interpolation = type;
+	}
+
+	// Makes `part` the only part, covering the whole waveform.
+	void set_generated_part(WaveformPart* part);
+
 private:
 	uint32_t width;
 	uint32_t index;
+	InterpolationType interpolation;
 	std::vector<Ref<WaveformPart>> parts;
 };
 

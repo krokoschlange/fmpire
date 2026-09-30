@@ -37,6 +37,9 @@ public:
 	{
 		if (wf == waveform)
 		{
+			// it may have been made editable meanwhile
+			update_make_editable_button();
+			repaint();
 			return;
 		}
 
@@ -106,6 +109,7 @@ private:
 	Ref<WaveformTool> active_tool;
 
 	Ref<Button> delete_button;
+	Ref<Button> make_editable_button;
 
 	uint32_t osc_index;
 	uint32_t grid_x;
@@ -113,6 +117,14 @@ private:
 	StateManager& state_manager;
 
 	Callback* callback;
+
+	// Interpolated waveforms are derived from their neighbours. They are shown
+	// but can't be edited until they are made editable.
+	bool is_read_only() const { return waveform && waveform->is_interpolated(); }
+	float banner_height() const;
+	float button_width() const;
+	void update_make_editable_button();
+	void make_editable();
 
 	void update_delete_button();
 	void on_waveform_updated(bool update_dsp, bool notify_callback = true);

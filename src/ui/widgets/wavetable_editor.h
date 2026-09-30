@@ -113,6 +113,10 @@ private:
 
 	Ref<Button> undo_button;
 	Ref<Button> redo_button;
+	Ref<Button> to_harmonics_button;
+	Ref<Button> to_harmonics_hq_button;
+	Ref<Button> to_samples_button;
+	Ref<Button> export_wav_button;
 
 	WavetableCreator* wavetable;
 
@@ -129,9 +133,35 @@ private:
 	void refresh_editor_view();
 	void apply_history_snapshot(const std::string& snapshot);
 	void update_undo_redo_buttons();
+	void update_tool_states();
+
+	// Sends the whole wavetable to the DSP (for changes that can't be
+	// expressed as an insert/remove/update of single waveforms).
+	void send_all_waveforms();
+
+	// Replaces all parts of the selected waveform with one harmonics part that
+	// reproduces it (128 harmonics, or every harmonic the waveform has in high
+	// quality), or with one samples part holding its samples.
+	void convert_to_harmonics(const bool high_quality);
+	void convert_to_samples();
+
+	// Makes `part` (covering the whole waveform) the only part of the selected
+	// waveform and selects it.
+	void replace_waveform_parts(Waveform* const wf, WaveformPart* const part);
 
 	void apply_bulk_insert(uint32_t start,
 						   const std::vector<Ref<Waveform>>& new_waveforms);
+
+	// Inserts `amount` waveforms at `start` that are derived from the
+	// waveforms around them (morph bulk op).
+	void insert_interpolated(const uint32_t start,
+							 const uint32_t amount,
+							 const InterpolationType type);
+
+	// Exports the selected oscillator's wavetable as a multi-cycle WAV file
+	// (one waveform per cycle, concatenated in table order), after asking the
+	// user where to save it.
+	void export_wavetable();
 };
 
 }; // namespace fmpire

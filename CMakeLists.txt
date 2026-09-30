@@ -49,14 +49,17 @@ dpf_add_plugin(fmpire
 		src/ui/widgets/harmonic_editor.cpp
 		src/ui/widgets/image_button.cpp
 		src/ui/widgets/int_editor.cpp
+		src/ui/widgets/keyboard_bar.cpp
 		src/ui/widgets/knob.cpp
 		src/ui/widgets/label.cpp
 		src/ui/widgets/mod_source_list.cpp
+		src/ui/widgets/modulation_matrix.cpp
 		src/ui/widgets/modulator_editor.cpp
 		src/ui/widgets/modulator_settings_panel.cpp
 		src/ui/widgets/oscillator_bar.cpp
 		src/ui/widgets/oscillator_page.cpp
 		src/ui/widgets/oscillator_settings.cpp
+		src/ui/widgets/piano_keyboard.cpp
 		src/ui/widgets/relative_container.cpp
 		src/ui/widgets/scroll_container.cpp
 		src/ui/widgets/selector.cpp

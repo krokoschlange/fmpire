@@ -2,6 +2,9 @@
 
 #include "utils.h"
 
+#include <algorithm>
+#include <cmath>
+
 #include "exprtk.hpp"
 #include "FftRealPair.hpp"
 
@@ -362,6 +365,29 @@ void HarmonicsWaveformPart::update()
 			samples[smpl] = value;
 		}
 	}
+}
+
+void HarmonicsWaveformPart::normalize()
+{
+	update();
+
+	float peak = 0.0f;
+	const size_t last = std::min((size_t) end, samples.size());
+	for (size_t pos = start; pos < last; pos++)
+	{
+		peak = std::max(peak, std::abs(samples[pos]));
+	}
+	if (peak < 1e-9f)
+	{
+		return;
+	}
+
+	// every harmonic type is linear in the amplitudes
+	for (Harmonic& harmonic : harmonics)
+	{
+		harmonic.amplitude /= peak;
+	}
+	update();
 }
 
 std::vector<HarmonicsWaveformPart::Harmonic> analyze_harmonics(

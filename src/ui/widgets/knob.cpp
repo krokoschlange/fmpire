@@ -16,6 +16,30 @@
 namespace fmpire
 {
 
+namespace
+{
+
+// Widens [down, up] (how far a route can move its target below/above the knob
+// value) by what this route contributes.
+void add_route_extent(const RouteSettings& route, float& down, float& up)
+{
+	if (route.bipolar)
+	{
+		down += std::fabs(route.amount);
+		up += std::fabs(route.amount);
+	}
+	else if (route.amount >= 0.0f)
+	{
+		up += route.amount;
+	}
+	else
+	{
+		down -= route.amount;
+	}
+}
+
+} // namespace
+
 Knob::Knob(Widget* parentWidget) :
 	FMpireWidget(parentWidget),
 	value(0.5),
@@ -62,6 +86,15 @@ void Knob::set_mod_target(ModulationModel& modulation_model,
 void Knob::on_modulation_changed()
 {
 	repaint();
+}
+
+void Knob::on_route_meter_changed(const size_t slot)
+{
+	const RouteSettings* route = mod_model->get_route(slot);
+	if (route && route->target == mod_target && route->target_object == mod_object)
+	{
+		repaint();
+	}
 }
 
 bool Knob::is_mod_mode() const
@@ -293,6 +326,24 @@ bool Knob::onMotion(const MotionEvent& event)
 	return true;
 }
 
+void Knob::draw_mod_range(const GraphicsContext& context,
+						  const float radius,
+						  const float down,
+						  const float up,
+						  const float width) const
+{
+	const float low = std::clamp(value - down, 0.0f, 1.0f);
+	const float high = std::clamp(value + up, 0.0f, 1.0f);
+
+	Color(255, 150, 40).setFor(context);
+	Arc<float> range(getWidth() / 2,
+					 getHeight() / 2,
+					 radius * 1.25f,
+					 lerp(45, 315, low),
+					 lerp(45, 315, high));
+	range.draw(context, width);
+}
+
 void Knob::onDisplay()
 {
 	clip();
@@ -326,30 +377,41 @@ void Knob::onDisplay()
 
 		if (route)
 		{
-			float low = value;
-			float high = value;
-			if (route->bipolar)
+			float down = 0.0f;
+			float up = 0.0f;
+			add_route_extent(*route, down, up);
+			draw_mod_range(context, radius, down, up, radius * 0.18f);
+		}
+	}
+	else if (mod_model)
+	{
+		// outside of programming mode: the combined range of all routes, and
+		// where the modulation currently is
+		float down = 0.0f;
+		float up = 0.0f;
+		bool modulated = false;
+		for (size_t slot = 0; slot < mod_model->route_slot_count(); slot++)
+		{
+			const RouteSettings* route = mod_model->get_route(slot);
+			if (route && route->target == mod_target
+				&& route->target_object == mod_object)
 			{
-				low -= std::fabs(route->amount);
-				high += std::fabs(route->amount);
+				add_route_extent(*route, down, up);
+				modulated = true;
 			}
-			else if (route->amount >= 0.0f)
+		}
+		if (modulated)
+		{
+			draw_mod_range(context, radius, down, up, radius * 0.05f);
+			const float live = mod_model->get_target_meter(mod_target, mod_object);
+			if (std::fabs(live) > 0.001f)
 			{
-				high += route->amount;
+				draw_mod_range(context,
+							   radius,
+							   live < 0.0f ? -live : 0.0f,
+							   live > 0.0f ? live : 0.0f,
+							   radius * 0.18f);
 			}
-			else
-			{
-				low += route->amount;
-			}
-			low = std::clamp(low, 0.0f, 1.0f);
-			high = std::clamp(high, 0.0f, 1.0f);
-
-			Arc<float> range(getWidth() / 2,
-							 getHeight() / 2,
-							 radius * 1.25f,
-							 lerp(45, 315, low),
-							 lerp(45, 315, high));
-			range.draw(context, radius * 0.18f);
 		}
 	}
 

@@ -1,9 +1,11 @@
 #ifndef OSCILLATOR_H_INCLUDED
 #define OSCILLATOR_H_INCLUDED
 
+#include "mod_types.h"
 #include "wavetable.h"
 #include "wavetable_creator.h"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -27,6 +29,10 @@ struct OscillatorParams
 	float unison_detune = 0.0f;         // dynamic, mod
 	float unison_spread = 0.0f;         // dynamic, mod
 	float unison_phase_random = 0.0f;   // on voice start
+
+	// how much each oscillator (the modulator) modulates this one (the
+	// carrier), 0..1: [AM/FM/PM/RM][modulator]; dynamic, mod
+	std::array<std::array<float, FMPIRE_OSC_COUNT>, matrix_type_count> depth{};
 };
 
 // An oscillator as the audio thread plays it (see Patch): the parameters and
@@ -39,7 +45,8 @@ struct Oscillator
 
 	float sample(const float phase, const float wavetable_position) const
 	{
-		return wavetable ? wavetable->sample(wavetable_position, phase) : 0.0f;
+		return wavetable ? wavetable->sample(wavetable_position, phase, true, true)
+						 : 0.0f;
 	}
 };
 
@@ -57,6 +64,11 @@ public:
 	void set_state(const std::string_view& key, std::string_view& state);
 
 	std::string get_state() const;
+
+	// The cross modulation depths of this oscillator as the carrier, as their
+	// own section of the full state: [type][modulator] as consecutive floats.
+	std::string get_matrix_state() const;
+	void set_matrix_state(std::string_view& state);
 
 	const OscillatorParams& get_params() const { return params; }
 

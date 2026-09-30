@@ -41,7 +41,8 @@ public:
 
 	struct MacroListener
 	{
-		virtual void on_macro_changed(const size_t index, const float value) = 0;
+		virtual void on_macro_changed(const size_t index,
+									  const float value) = 0;
 	};
 
 	void add_macro_listener(MacroListener* const listener);
@@ -57,6 +58,11 @@ public:
 
 	using FileBrowserCallback = std::function<void(const char* filename)>;
 	void open_file_browser(FileBrowserCallback callback);
+
+	// Opens a "save file" dialog instead of the default "open file" one.
+	void open_file_browser(FileBrowserCallback callback,
+						   const bool saving,
+						   const char* default_name = nullptr);
 	void on_file_browser_selected(const char* filename);
 
 private:

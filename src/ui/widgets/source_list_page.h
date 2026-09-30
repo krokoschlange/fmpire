@@ -24,6 +24,10 @@ public:
 
 	virtual void on_modulation_changed() override;
 
+	// Replaces the placeholder with the actual content of the tab; the widget
+	// must be a child of this page.
+	void set_body(FMpireWidget* const new_body);
+
 private:
 	ModulationModel& model;
 
@@ -31,6 +35,7 @@ private:
 	Ref<ModSourceList> source_list;
 	Ref<Border> body_border;
 	Ref<Label> body_label;
+	Ref<FMpireWidget> body;
 };
 
 } // namespace fmpire

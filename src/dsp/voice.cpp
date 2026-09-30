@@ -26,8 +26,10 @@ OscillatorVoice::OscillatorVoice() :
 	pan(0.5f),
 	note_shift(0),
 	unison_detune(0.0f),
-	unison_spread(0.0f)
+	unison_spread(0.0f),
+	matrix_entry_count(0)
 {
+	matrix_entry_index.fill(no_entry);
 	unison_phases.fill(0.0f);
 	unison_detunes.fill(0.0f);
 	unison_pans.fill(0.5f);
@@ -60,16 +62,12 @@ void OscillatorVoice::init(std::default_random_engine& rand,
 
 	base_frequency = 440.0f * std::exp2f((float) (note - 69) / 12.0f);
 
+	last_sample = 0.0f;
 	last_unison_size = 0;
 	calculate_unison_parameters();
 
 	refresh_base_values();
 	clear_modulation();
-}
-
-float OscillatorVoice::get_osc_value() const
-{
-	return last_sample;
 }
 
 void OscillatorVoice::calculate_unison_parameters()
@@ -116,7 +114,99 @@ void OscillatorVoice::calculate_unison_parameters()
 	last_unison_size = oscillator->params.unison_size;
 }
 
-void OscillatorVoice::run_one_sample(float& left, float& right)
+namespace
+{
+// How far a fully deep modulator sweeps: FM changes the frequency by up to
+// this factor, PM shifts the phase by up to this many cycles.
+constexpr float fm_range = 4.0f;
+constexpr float pm_range = 1.0f;
+} // namespace
+
+void OscillatorVoice::begin_block()
+{
+	matrix_entry_index.fill(no_entry);
+	matrix_entry_count = 0;
+
+	for (size_t type = 0; type < matrix_type_count; type++)
+	{
+		for (size_t modulator = 0; modulator < FMPIRE_OSC_COUNT; modulator++)
+		{
+			if (oscillator->params.depth[type][modulator] > 0.0f)
+			{
+				enable_cross_modulation(type, modulator);
+			}
+		}
+	}
+}
+
+void OscillatorVoice::enable_cross_modulation(const size_t type,
+											  const size_t modulator)
+{
+	if (type >= matrix_type_count || modulator >= FMPIRE_OSC_COUNT)
+	{
+		return;
+	}
+
+	uint8_t& index = matrix_entry_index[type * FMPIRE_OSC_COUNT + modulator];
+	if (index != no_entry)
+	{
+		return;
+	}
+	index = static_cast<uint8_t>(matrix_entry_count);
+	matrix_entries[matrix_entry_count] = {static_cast<uint8_t>(type),
+										  static_cast<uint8_t>(modulator),
+										  0.0f};
+	matrix_entry_count++;
+}
+
+OscillatorVoice::CrossModulation OscillatorVoice::calculate_cross_modulation(
+	const std::array<OscillatorVoice, FMPIRE_OSC_COUNT>& voices) const
+{
+	float gain = 1.0f;
+	float frequency_shift = 0.0f;
+	float phase = 0.0f;
+
+	for (size_t index = 0; index < matrix_entry_count; index++)
+	{
+		const MatrixEntry& entry = matrix_entries[index];
+		const float depth =
+			std::clamp(oscillator->params.depth[entry.type][entry.modulator]
+						   + entry.offset,
+					   0.0f,
+					   1.0f);
+		if (depth <= 0.0f)
+		{
+			continue;
+		}
+
+		const float modulator = voices[entry.modulator].get_osc_value();
+		switch (entry.type)
+		{
+		case 0: // AM: between 1 - depth and 1
+			gain *= 1.0f + depth * (modulator - 1.0f) * 0.5f;
+			break;
+		case 1: // FM
+			frequency_shift += depth * fm_range * modulator;
+			break;
+		case 2: // PM
+			phase += depth * pm_range * modulator;
+			break;
+		default: // RM: from the plain signal to the full ring modulation
+			gain *= 1.0f + depth * (modulator - 1.0f);
+			break;
+		}
+	}
+
+	CrossModulation cross;
+	cross.gain = gain;
+	cross.frequency = 1.0f + frequency_shift;
+	cross.phase = phase;
+	return cross;
+}
+
+void OscillatorVoice::run_one_sample(float& left,
+									 float& right,
+									 const CrossModulation& cross)
 {
 	auto modulated = [this](const float base, const TargetType target)
 	{
@@ -138,9 +228,11 @@ void OscillatorVoice::run_one_sample(float& left, float& right)
 	for (size_t unison_voice = 0; unison_voice < oscillator->params.unison_size;
 		 unison_voice++)
 	{
-		float smpl = oscillator->sample(unison_phases[unison_voice],
+		float smpl = oscillator->sample(unison_phases[unison_voice] + cross.phase,
 										wavetable_position_now);
 
+		// AM and RM; what other oscillators get to modulate with
+		smpl *= cross.gain;
 		if (unison_voice == reference_index)
 		{
 			last_sample = smpl;
@@ -170,10 +262,10 @@ void OscillatorVoice::run_one_sample(float& left, float& right)
 		float detune_shift =
 			-2.0f + 4.0f * detune_now + uni_det + (float) note_shift / 12.0f;
 		float detune_factor = std::exp2f(detune_shift);
-		float freq = base_frequency * detune_factor;
+		float freq = base_frequency * detune_factor * cross.frequency;
 		float& phase = unison_phases[unison_voice];
 		phase += freq / samplerate;
-		phase = std::fmod(phase, 1.0f);
+		phase -= std::floor(phase);
 	}
 }
 
@@ -193,6 +285,9 @@ namespace
 // Modulators every voice has playback state for from the start; more are
 // added when a patch needs them.
 constexpr size_t initial_modulator_capacity = 64;
+
+// Fade-out at the end of a note, after note off.
+constexpr float voice_fade_seconds = 0.005f;
 
 // Time constant for smoothing the jump when an envelope's release starts from
 // the level it was at when the key was let go.
@@ -308,11 +403,35 @@ void ModulatorVoice::add_modulation(const TargetType target, const float amount)
 	}
 }
 
+float ModulatorVoice::get_modulation(const TargetType target) const
+{
+	if (target == TargetType::MOD_AMOUNT)
+	{
+		return amount_offset;
+	}
+	if (target == TargetType::MOD_FREQ)
+	{
+		return speed_offset;
+	}
+	return 0.0f;
+}
+
+float ModulatorVoice::get_playhead(const Modulator& mod) const
+{
+	if (mod.get_type() == Modulator::Type::LFO)
+	{
+		const float phase = position + mod.get_phase_offset();
+		return phase - std::floor(phase);
+	}
+	return position;
+}
+
 Voice::Voice(GlobalSources& global_sources, VoiceEndedCallback* ended_cb) :
 	active(false),
 	patch(nullptr),
 	globals(global_sources),
 	modulator_voices(initial_modulator_capacity),
+	tail_relevant(initial_modulator_capacity),
 	modulators_released(false),
 	samplerate(44100.0f),
 	rand((size_t) this),
@@ -326,6 +445,7 @@ Voice::Voice(const Voice& voice) :
 	patch(nullptr),
 	globals(voice.globals),
 	modulator_voices(initial_modulator_capacity),
+	tail_relevant(initial_modulator_capacity),
 	modulators_released(false),
 	samplerate(44100.0f),
 	rand((size_t) this),
@@ -351,6 +471,66 @@ void Voice::set_patch(const Patch& new_patch)
 	{
 		modulator_voices.resize(new_patch.modulators.size());
 	}
+	if (tail_relevant.size() < modulator_voices.size())
+	{
+		tail_relevant.resize(modulator_voices.size());
+	}
+}
+
+size_t Voice::calculate_tail(const float bpm, const float rate)
+{
+	const std::vector<Modulator>& modulators = patch->modulators;
+	const std::vector<ModRoute>& routes = patch->routes;
+	const size_t mod_count = modulators.size();
+
+	std::fill(tail_relevant.begin(), tail_relevant.begin() + mod_count, 0);
+
+	// modulators that are routed to the volume of an oscillator that plays
+	for (const ModRoute& route : routes)
+	{
+		if (route.active && route.source.type == SourceType::MODULATOR
+			&& route.target == TargetType::OSC_VOLUME
+			&& route.target_object < FMPIRE_OSC_COUNT
+			&& oscillator_voices[route.target_object].is_active()
+			&& route.source.index < mod_count
+			&& modulators[route.source.index].is_enabled())
+		{
+			tail_relevant[route.source.index] = 1;
+		}
+	}
+
+	// ... and the ones that modulate those (amount or speed)
+	bool changed = true;
+	while (changed)
+	{
+		changed = false;
+		for (const ModRoute& route : routes)
+		{
+			if (route.active && route.source.type == SourceType::MODULATOR
+				&& is_modulator_target(route.target)
+				&& route.target_object < mod_count
+				&& route.source.index < mod_count
+				&& tail_relevant[route.target_object]
+				&& !tail_relevant[route.source.index]
+				&& modulators[route.source.index].is_enabled())
+			{
+				tail_relevant[route.source.index] = 1;
+				changed = true;
+			}
+		}
+	}
+
+	size_t tail = 0;
+	for (size_t mod_idx = 0; mod_idx < mod_count; mod_idx++)
+	{
+		if (tail_relevant[mod_idx])
+		{
+			tail = std::max(
+				tail,
+				(size_t) (modulators[mod_idx].get_release_seconds(bpm) * rate));
+		}
+	}
+	return tail;
 }
 
 void Voice::start(const size_t offset,
@@ -375,22 +555,18 @@ void Voice::start(const size_t offset,
 		osc_voice.init(rand, note, rate);
 	}
 
-	death_time = 0;
-
 	const std::vector<Modulator>& modulators = patch->modulators;
 	const size_t mod_count = modulators.size();
 	for (size_t mod_idx = 0; mod_idx < mod_count; mod_idx++)
 	{
-		const Modulator& mod = modulators[mod_idx];
-		modulator_voices[mod_idx].init(mod, rate);
-		if (mod.is_enabled())
-		{
-			death_time = std::max(
-				death_time,
-				(size_t) (mod.get_release_seconds(bpm) * rate));
-		}
+		modulator_voices[mod_idx].init(modulators[mod_idx], rate);
 	}
 	modulators_released = false;
+
+	// Without an envelope on the volume a note ends when the key is released,
+	// after a short fade so it doesn't click.
+	fade_length = std::max<size_t>(1, (size_t) (voice_fade_seconds * rate));
+	death_time = std::max(calculate_tail(bpm, rate), fade_length);
 
 	stop_voice = false;
 }
@@ -479,12 +655,24 @@ void Voice::apply_routes(const size_t mod_count, const size_t route_count)
 		const float centered = route.bipolar ? 2.0f * value - 1.0f : value;
 		const float contribution = route.amount * gain * centered;
 
-		if (static_cast<size_t>(route.target) < osc_target_count)
+		if (is_oscillator_target(route.target))
 		{
 			if (route.target_object < FMPIRE_OSC_COUNT)
 			{
 				oscillator_voices[route.target_object].add_modulation(
 					route.target,
+					contribution);
+			}
+		}
+		else if (is_matrix_target(route.target))
+		{
+			const size_t carrier = route.target_object / FMPIRE_OSC_COUNT;
+			const size_t modulator = route.target_object % FMPIRE_OSC_COUNT;
+			if (carrier < FMPIRE_OSC_COUNT)
+			{
+				oscillator_voices[carrier].add_cross_modulation(
+					static_cast<size_t>(route.target) - osc_target_count,
+					modulator,
 					contribution);
 			}
 		}
@@ -517,6 +705,21 @@ void Voice::run(float** inout, size_t count, const float bpm)
 	{
 		osc_voice.refresh_base_values();
 		osc_voice.calculate_unison_parameters();
+		osc_voice.begin_block();
+	}
+	for (size_t route_idx = 0; route_idx < route_count; route_idx++)
+	{
+		const ModRoute& route = patch->routes[route_idx];
+		if (route.active && is_matrix_target(route.target))
+		{
+			const size_t carrier = route.target_object / FMPIRE_OSC_COUNT;
+			if (carrier < FMPIRE_OSC_COUNT)
+			{
+				oscillator_voices[carrier].enable_cross_modulation(
+					static_cast<size_t>(route.target) - osc_target_count,
+					route.target_object % FMPIRE_OSC_COUNT);
+			}
+		}
 	}
 	for (size_t mod_idx = 0; mod_idx < mod_count; mod_idx++)
 	{
@@ -553,15 +756,26 @@ void Voice::run(float** inout, size_t count, const float bpm)
 		}
 		apply_routes(mod_count, route_count);
 
+		// after note off: fade out over the last part of the tail
+		float fade = 1.0f;
+		if (stop_voice && stop_delay <= smpl)
+		{
+			fade = std::min(1.0f, (float) death_time / (float) fade_length);
+		}
+
 		for (OscillatorVoice& osc_voice : oscillator_voices)
 		{
 			if (osc_voice.is_active())
 			{
+				// the other oscillators' outputs of this sample (those before
+				// this one) or of the previous one (those after it)
+				const OscillatorVoice::CrossModulation cross =
+					osc_voice.calculate_cross_modulation(oscillator_voices);
+
 				float left_smpl = 0, right_smpl = 0;
-				osc_voice.run_one_sample(left_smpl, right_smpl);
-				left[smpl] += left_smpl * volume;
-				right[smpl] += right_smpl * volume;
-				float osc_sample = osc_voice.get_osc_value();
+				osc_voice.run_one_sample(left_smpl, right_smpl, cross);
+				left[smpl] += left_smpl * volume * fade;
+				right[smpl] += right_smpl * volume * fade;
 			}
 		}
 
@@ -596,7 +810,46 @@ void Voice::run(float** inout, size_t count, const float bpm)
 	}
 }
 
-bool Voice::is_active()
+float Voice::get_modulation_offset(const TargetType target,
+								   const size_t target_object) const
+{
+	if (is_oscillator_target(target))
+	{
+		return target_object < FMPIRE_OSC_COUNT
+				 ? oscillator_voices[target_object].get_modulation(target)
+				 : 0.0f;
+	}
+	if (is_matrix_target(target))
+	{
+		const size_t carrier = target_object / FMPIRE_OSC_COUNT;
+		const size_t modulator = target_object % FMPIRE_OSC_COUNT;
+		return carrier < FMPIRE_OSC_COUNT
+				 ? oscillator_voices[carrier].get_cross_modulation(
+					 static_cast<size_t>(target) - osc_target_count,
+					 modulator)
+				 : 0.0f;
+	}
+	return target_object < modulator_voices.size()
+			 ? modulator_voices[target_object].get_modulation(target)
+			 : 0.0f;
+}
+
+float Voice::get_playhead(const size_t id) const
+{
+	if (!patch || id >= patch->modulators.size() || id >= modulator_voices.size())
+	{
+		return -1.0f;
+	}
+	const Modulator& mod = patch->modulators[id];
+	if (!mod.is_enabled()
+		|| modulator_voices[id].get_generation() != mod.get_generation())
+	{
+		return -1.0f;
+	}
+	return modulator_voices[id].get_playhead(mod);
+}
+
+bool Voice::is_active() const
 {
 	return active;
 }

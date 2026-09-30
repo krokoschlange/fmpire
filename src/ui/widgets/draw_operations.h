@@ -94,6 +94,16 @@ float fit_text(const GraphicsContext& context,
 			   const float size_x,
 			   const float size_y);
 
+// Strokes diagonal lines with the current source over the given box. Used to
+// mark content that is derived and can't be edited directly.
+void fill_hatch(const GraphicsContext& context,
+				float left,
+				float top,
+				float width,
+				float height,
+				float spacing = 6,
+				float line_width = 1);
+
 void draw_line_string(const GraphicsContext& context,
 					  const std::vector<Point<float>>& points,
 					  const float line_width);

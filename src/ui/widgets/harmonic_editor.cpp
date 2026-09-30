@@ -77,6 +77,7 @@ void HarmonicEditor::onDisplay()
 
 		if (i % 8 == 0)
 		{
+			Color(255, 255, 255).setFor(context);
 			draw_text(context,
 					  std::to_string(i).c_str(),
 					  theme->font.c_str(),

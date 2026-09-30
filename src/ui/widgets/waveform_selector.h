@@ -11,6 +11,7 @@ class StateManager;
 class Waveform;
 class WaveformDragAndDrop;
 class Wavetable;
+class WavetableCreator;
 
 class WaveformSelector : public FMpireWidget, public Button::Callback
 {
@@ -18,7 +19,8 @@ public:
 	WaveformSelector(Widget* parent);
 	virtual ~WaveformSelector() noexcept;
 
-	void set_wavetable(Wavetable* const wt);
+	// `creator` is only used to tell which waveforms are interpolated
+	void set_wavetable(Wavetable* const wt, WavetableCreator* const creator);
 
 	struct Callback
 	{
@@ -52,6 +54,7 @@ protected:
 
 private:
 	Wavetable* wavetable;
+	WavetableCreator* wavetable_creator;
 
 	size_t selected;
 

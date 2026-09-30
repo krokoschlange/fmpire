@@ -15,16 +15,25 @@ namespace fmpire
 {
 
 FMpire::FMpire() :
-	Plugin(FMPIRE_MACRO_COUNT, 0, 1),
+	Plugin(FMPIRE_PARAMETER_COUNT, 0, 1),
 	sync_time(false),
 	self_frame(0),
 	volume(1),
 	voices(init_array<Voice, FMPIRE_VOICE_COUNT>(
 		Voice(global_sources, this))),
 	current_bpm(120.0f),
+	last_started_voice(nullptr),
 	modulator_generation(0)
 {
 	std::fill(voice_map.begin(), voice_map.end(), nullptr);
+	for (std::atomic<float>& meter : route_meters)
+	{
+		meter.store(0.0f, std::memory_order_relaxed);
+	}
+	for (std::atomic<float>& playhead : playheads)
+	{
+		playhead.store(-1.0f, std::memory_order_relaxed);
+	}
 	for (size_t voice_idx = 0; voice_idx < voices.size(); voice_idx++)
 	{
 		free_voice_queue.push(&voices[voice_idx]);
@@ -58,8 +67,7 @@ bool route_uses_modulator(const RouteSettings& route, const size_t id)
 	const bool uses_as_source =
 		route.source.type == SourceType::MODULATOR && route.source.index == id;
 	const bool uses_as_target =
-		static_cast<size_t>(route.target) >= osc_target_count
-		&& route.target_object == id;
+		is_modulator_target(route.target) && route.target_object == id;
 	return uses_as_source || uses_as_target;
 }
 } // namespace
@@ -249,6 +257,14 @@ void FMpire::restore_everything(std::string_view& state)
 			settings.decode(state);
 			load_route(settings);
 		}
+		else if (state.starts_with(MATRIX_DATA_STRING))
+		{
+			state.remove_prefix(MATRIX_DATA_STRING.size());
+			for (OscillatorState& oscillator : oscillator_states)
+			{
+				oscillator.set_matrix_state(state);
+			}
+		}
 		else
 		{
 			return;
@@ -336,6 +352,40 @@ void FMpire::initParameter(uint32_t index, Parameter& parameter)
 {
 	if (index >= FMPIRE_MACRO_COUNT)
 	{
+		if (index >= FMPIRE_PARAMETER_COUNT)
+		{
+			return;
+		}
+
+		const bool is_playhead = index >= FMPIRE_PLAYHEAD_BASE;
+		const uint32_t number =
+			(is_playhead ? index - FMPIRE_PLAYHEAD_BASE : index - FMPIRE_METER_BASE)
+			+ 1;
+		char meter_name[32];
+		std::snprintf(meter_name,
+					  sizeof(meter_name),
+					  is_playhead ? "Playhead %u" : "Mod meter %u",
+					  number);
+		char meter_short_name[8];
+		std::snprintf(meter_short_name,
+					  sizeof(meter_short_name),
+					  is_playhead ? "PH%u" : "MM%u",
+					  number);
+		char meter_symbol[32];
+		std::snprintf(meter_symbol,
+					  sizeof(meter_symbol),
+					  is_playhead ? "playhead_%u" : "mod_meter_%u",
+					  number);
+
+		// -1..1: modulation offsets are signed, and a playhead of -1 means
+		// the modulator isn't playing
+		parameter.hints = kParameterIsOutput | kParameterIsHidden;
+		parameter.name = meter_name;
+		parameter.shortName = meter_short_name;
+		parameter.symbol = meter_symbol;
+		parameter.ranges.min = -1.0f;
+		parameter.ranges.max = 1.0f;
+		parameter.ranges.def = is_playhead ? -1.0f : 0.0f;
 		return;
 	}
 
@@ -359,7 +409,15 @@ float FMpire::getParameterValue(uint32_t index) const
 {
 	if (index >= FMPIRE_MACRO_COUNT)
 	{
-		return 0.0f;
+		if (index >= FMPIRE_PARAMETER_COUNT)
+		{
+			return 0.0f;
+		}
+		return index >= FMPIRE_PLAYHEAD_BASE
+				 ? playheads[index - FMPIRE_PLAYHEAD_BASE].load(
+					 std::memory_order_relaxed)
+				 : route_meters[index - FMPIRE_METER_BASE].load(
+					 std::memory_order_relaxed);
 	}
 	return global_sources.macros[index].load(std::memory_order_relaxed);
 }
@@ -401,6 +459,13 @@ String FMpire::getState(const char* key) const
 		{
 			data += String(oscillator.get_state());
 		}
+
+		std::string matrix(MATRIX_DATA_STRING);
+		for (const OscillatorState& oscillator : oscillator_states)
+		{
+			matrix += oscillator.get_matrix_state();
+		}
+		data += String(matrix);
 
 		for (size_t id = 0; id < modulator_shadows.size(); id++)
 		{
@@ -515,6 +580,51 @@ void FMpire::run(const float** inputs,
 	{
 		voices[voice_idx].run(outputs, frames, current_bpm);
 	}
+
+	publish_meters(patch);
+}
+
+void FMpire::publish_meters(const Patch& patch)
+{
+	// the newest voice, or any voice that is still sounding
+	const Voice* display_voice = nullptr;
+	if (last_started_voice && last_started_voice->is_active())
+	{
+		display_voice = last_started_voice;
+	}
+	else
+	{
+		for (const Voice& voice : voices)
+		{
+			if (voice.is_active())
+			{
+				display_voice = &voice;
+				break;
+			}
+		}
+	}
+
+	const size_t route_count = std::min(patch.routes.size(), route_meters.size());
+	for (size_t slot = 0; slot < route_meters.size(); slot++)
+	{
+		float offset = 0.0f;
+		if (display_voice && slot < route_count && patch.routes[slot].active)
+		{
+			const ModRoute& route = patch.routes[slot];
+			offset = std::clamp(display_voice->get_modulation_offset(
+									route.target,
+									route.target_object),
+								-1.0f,
+								1.0f);
+		}
+		route_meters[slot].store(offset, std::memory_order_relaxed);
+	}
+
+	for (size_t id = 0; id < playheads.size(); id++)
+	{
+		playheads[id].store(display_voice ? display_voice->get_playhead(id) : -1.0f,
+							std::memory_order_relaxed);
+	}
 }
 
 void FMpire::on_midi_event(const MidiEvent& event)
@@ -581,9 +691,16 @@ void FMpire::on_note_on(const uint32_t offset,
 						const int note,
 						const float velocity)
 {
-	if (voice_map[note])
+	// A retriggered note lets the old voice ring out its release (cutting it
+	// off would click, the envelope is usually not at zero yet); it just stops
+	// being the voice of the note.
+	if (Voice* previous = voice_map[note])
 	{
-		voice_map[note]->kill();
+		if (!previous->is_stopping())
+		{
+			previous->stop(offset);
+		}
+		voice_map[note] = nullptr;
 	}
 
 	Voice* voice = nullptr;
@@ -599,12 +716,11 @@ void FMpire::on_note_on(const uint32_t offset,
 
 	if (voice->is_active())
 	{
-		int old_note = voice->get_note();
-		voice_map[old_note] = nullptr;
 		voice->kill();
 	}
 	voice_map[note] = voice;
 	voice->start(offset, note, velocity, getSampleRate(), current_bpm);
+	last_started_voice = voice;
 }
 
 void FMpire::on_poly_aftertouch(const uint32_t offset,
@@ -666,7 +782,11 @@ void FMpire::on_all_notes_off()
 
 void FMpire::on_voice_ended(Voice* const voice)
 {
-	voice_map[voice->get_note()] = nullptr;
+	// a voice that was retriggered no longer owns its note
+	if (voice_map[voice->get_note()] == voice)
+	{
+		voice_map[voice->get_note()] = nullptr;
+	}
 	free_voice_queue.push(voice);
 }
 

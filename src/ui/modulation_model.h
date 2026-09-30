@@ -4,6 +4,9 @@
 #include "curve.h"
 #include "mod_types.h"
 
+#include "defines.h"
+
+#include <array>
 #include <cstddef>
 #include <optional>
 #include <string_view>
@@ -31,6 +34,13 @@ public:
 	struct Listener
 	{
 		virtual void on_modulation_changed() = 0;
+
+		// The live modulation reported for a route slot changed (this is
+		// called often, unlike on_modulation_changed).
+		virtual void on_route_meter_changed(const size_t slot) {}
+
+		// The playhead reported for a modulator changed (also often).
+		virtual void on_playhead_changed(const size_t id) {}
 	};
 
 	explicit ModulationModel(StateManager& state_mgr);
@@ -85,6 +95,35 @@ public:
 	void set_route_bipolar(const size_t slot, const bool bipolar);
 	void remove_route(const size_t slot);
 
+	// Live modulation: how far the DSP currently moves the target of the
+	// route in `slot` away from its knob value (-1..1, in knob units; the
+	// same for all routes of one target). Only the first FMPIRE_METER_COUNT
+	// slots are reported; the others read as 0. UI-only, sends nothing.
+	float get_route_meter(const size_t slot) const;
+	void set_route_meter(const size_t slot, const float value);
+
+	// The live offset of a target (0 if no route modulates it).
+	float get_target_meter(const TargetType target,
+						   const size_t target_object) const;
+
+	// Where modulator `id` currently is on its curve (0..1), or -1 if it
+	// isn't playing (or is beyond the first FMPIRE_PLAYHEAD_COUNT ids).
+	// UI-only, sends nothing.
+	float get_playhead(const size_t id) const;
+	void set_playhead(const size_t id, const float value);
+
+	// Cross modulation depths (0..1): how much oscillator `modulator` modulates
+	// oscillator `carrier`, for type 0..3 = AM/FM/PM/RM. Setting one sends it
+	// to the DSP; it does not notify the listeners (the matrix view that edits
+	// it already shows the value).
+	float get_matrix_depth(const size_t type,
+						   const size_t modulator,
+						   const size_t carrier) const;
+	void set_matrix_depth(const size_t type,
+						  const size_t modulator,
+						  const size_t carrier,
+						  const float value);
+
 	// The sections that follow the oscillators in the full state; replaces the
 	// current contents and does not send anything.
 	void parse_state(std::string_view& state);
@@ -93,9 +132,17 @@ private:
 	StateManager& state_manager;
 	std::vector<ModulatorEntry> modulators;
 	std::vector<std::optional<RouteSettings>> routes;
+	std::array<float, matrix_type_count * FMPIRE_OSC_COUNT * FMPIRE_OSC_COUNT>
+		matrix_depths;
+	std::array<float, FMPIRE_METER_COUNT> route_meters;
+	std::array<float, FMPIRE_PLAYHEAD_COUNT> playheads;
 	std::vector<Listener*> listeners;
 	size_t selected_modulator;
 	SourceId armed_source;
+
+	static size_t matrix_index(const size_t type,
+							   const size_t modulator,
+							   const size_t carrier);
 
 	void notify();
 	void fix_selection();

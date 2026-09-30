@@ -1,6 +1,8 @@
 #include "fmpire_ui.h"
 
 #include "grid_container.h"
+#include "keyboard_bar.h"
+#include "modulation_matrix.h"
 #include "oscillator_page.h"
 #include "relative_container.h"
 #include "source_list_page.h"
@@ -20,6 +22,7 @@ FMpireUI::FMpireUI() :
 
 	grid->add_row(1, 0, 3, 0, 100);
 	grid->add_row(3, 0, 0, 0, 0);
+	grid->add_row(1, 3, 0, 0, 90);
 	grid->add_column(1, 0, 0, 0, 0);
 
 	top_bar = new RelativeContainer(grid);
@@ -36,9 +39,8 @@ FMpireUI::FMpireUI() :
 	oscillator_page = new OscillatorPage(grid, state_manager);
 	grid->put(oscillator_page, 1, 0);
 
-	mod_page = new SourceListPage(grid,
-								  state_manager,
-								  "Modulation matrix (FM / PM) - coming soon");
+	mod_page = new SourceListPage(grid, state_manager, "");
+	mod_page->set_body(new ModulationMatrix(mod_page, state_manager));
 	grid->put(mod_page, 1, 0);
 
 	fx_page = new SourceListPage(grid, state_manager, "Effects - coming soon");
@@ -46,6 +48,11 @@ FMpireUI::FMpireUI() :
 
 	wavetable_editor = new WavetableEditor(grid, state_manager);
 	grid->put(wavetable_editor, 1, 0);
+
+	// not part of the tabs, so it stays visible on every page
+	keyboard_bar = new KeyboardBar(grid);
+	keyboard_bar->set_callback(this);
+	grid->put(keyboard_bar, 2, 0);
 
 	setSize(1024, 768);
 
@@ -67,6 +74,18 @@ void FMpireUI::parameterChanged(uint32_t index, float value)
 	{
 		state_manager.on_macro_changed(index, value);
 	}
+	else if (index < FMPIRE_PLAYHEAD_BASE)
+	{
+		state_manager.get_modulation().set_route_meter(index
+														   - FMPIRE_METER_BASE,
+													   value);
+	}
+	else if (index < FMPIRE_PARAMETER_COUNT)
+	{
+		state_manager.get_modulation().set_playhead(index
+														- FMPIRE_PLAYHEAD_BASE,
+													value);
+	}
 }
 
 void FMpireUI::stateChanged(const char* key, const char* value)
@@ -79,6 +98,7 @@ void FMpireUI::stateChanged(const char* key, const char* value)
 void FMpireUI::uiIdle()
 {
 	get_tooltip().idle();
+	keyboard_bar->idle();
 }
 
 void FMpireUI::uiFileBrowserSelected(const char* filename)
@@ -158,6 +178,18 @@ void FMpireUI::on_selected(Selector* const selector,
 						   const std::string& option)
 {
 	switch_to_tab(index);
+}
+
+void FMpireUI::on_key_pressed(PianoKeyboard* const keyboard,
+							  const int note,
+							  const int velocity)
+{
+	sendNote(0, note, velocity);
+}
+
+void FMpireUI::on_key_released(PianoKeyboard* const keyboard, const int note)
+{
+	sendNote(0, note, 0);
 }
 
 } // namespace fmpire

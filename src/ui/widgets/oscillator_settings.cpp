@@ -176,6 +176,7 @@ void OscillatorSettings::set_state(std::string_view& state)
 	volume->set_value(value);
 	decode_base64(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
 	wavetable_position->set_value(value);
+	wavetable_view->set_wavetable_pos(value);
 	decode_base64(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
 	detune->set_value(value);
 	decode_base64(state, reinterpret_cast<uint8_t*>(&value), sizeof(value));
@@ -323,6 +324,9 @@ Wavetable* OscillatorSettings::get_wavetable() const
 
 void OscillatorSettings::on_wavetable_changed() const
 {
+	// an edited waveform may be the anchor of interpolated ones
+	wavetable_creator->update_interpolated();
+
 	uint32_t width, height;
 	wavetable_creator->get_size(width, height);
 	wavetable->update(width, height, wavetable_creator->create_wavetable());

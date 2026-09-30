@@ -1,6 +1,8 @@
 #ifndef MOD_TYPES_H_INCLUDED
 #define MOD_TYPES_H_INCLUDED
 
+#include "defines.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -52,20 +54,62 @@ struct SourceId
 
 enum class TargetType : uint8_t
 {
+	// per oscillator, target_object = oscillator index
 	OSC_VOLUME,
 	OSC_WT_POS,
 	OSC_DETUNE,
 	OSC_PAN,
 	OSC_UNISON_DETUNE,
 	OSC_UNISON_SPREAD,
+	// depth of one oscillator modulating another (see matrix_target_object)
+	OSC_AM,
+	OSC_FM,
+	OSC_PM,
+	OSC_RM,
+	// per modulator, target_object = modulator id
 	MOD_AMOUNT,
 	MOD_FREQ,
 	COUNT,
 };
 
-// The first osc_target_count target types belong to an oscillator, the rest to
-// a modulator.
+// The first osc_target_count target types are plain oscillator parameters.
 constexpr size_t osc_target_count = 6;
+
+// Then come the cross modulation depths, one type per way an oscillator (the
+// modulator) can influence another one (the carrier): amplitude, frequency,
+// phase and ring modulation. Each depth is one value per (modulator, carrier)
+// pair.
+constexpr size_t matrix_type_count = 4;
+
+inline bool is_oscillator_target(const TargetType target)
+{
+	return static_cast<size_t>(target) < osc_target_count;
+}
+
+inline bool is_matrix_target(const TargetType target)
+{
+	const size_t value = static_cast<size_t>(target);
+	return value >= osc_target_count
+		&& value < osc_target_count + matrix_type_count;
+}
+
+inline bool is_modulator_target(const TargetType target)
+{
+	return static_cast<size_t>(target) >= osc_target_count + matrix_type_count;
+}
+
+// type: 0 = AM, 1 = FM, 2 = PM, 3 = RM
+inline TargetType matrix_target(const size_t type)
+{
+	return static_cast<TargetType>(osc_target_count + type);
+}
+
+// target_object of a matrix target route
+inline uint16_t matrix_target_object(const size_t carrier,
+									 const size_t modulator)
+{
+	return static_cast<uint16_t>(carrier * FMPIRE_OSC_COUNT + modulator);
+}
 
 enum class ModulatorType : uint8_t
 {

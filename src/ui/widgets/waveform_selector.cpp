@@ -3,6 +3,7 @@
 #include "Base.hpp"
 #include "draw_operations.h"
 #include "wavetable.h"
+#include "wavetable_creator.h"
 
 #define WAVEFORM_BOX_HEIGHT 40
 #define WAVEFORM_DRAG_THRESHOLD 5
@@ -13,6 +14,7 @@ namespace fmpire
 WaveformSelector::WaveformSelector(Widget* parent) :
 	FMpireWidget(parent),
 	wavetable(nullptr),
+	wavetable_creator(nullptr),
 	selected(0),
 	dragging(-2),
 	callback(nullptr)
@@ -23,9 +25,11 @@ WaveformSelector::~WaveformSelector() noexcept
 {
 }
 
-void WaveformSelector::set_wavetable(Wavetable* const wt)
+void WaveformSelector::set_wavetable(Wavetable* const wt,
+									 WavetableCreator* const creator)
 {
 	wavetable = wt;
+	wavetable_creator = creator;
 	selected = 0;
 	repaint();
 }
@@ -132,6 +136,26 @@ void WaveformSelector::onDisplay()
 								 corners);
 			}
 
+			const bool interpolated =
+				wavetable_creator && wavetable_creator->is_interpolated(pos);
+
+			// derived waveforms can't be edited: hatch them and dim the curve
+			Color curve_color = theme->highlight;
+			if (interpolated)
+			{
+				Color hatch_color = theme->foreground;
+				hatch_color.alpha = 0.6f;
+				hatch_color.setFor(context, true);
+				fill_hatch(context,
+						   1,
+						   pos * box_height + 1,
+						   getWidth() - 2,
+						   box_height - 2,
+						   6,
+						   1);
+				curve_color.alpha = 0.6f;
+			}
+
 			float rel_pos = (pos + 0.5f) / (h - 1);
 			if (h == 1)
 			{
@@ -146,9 +170,10 @@ void WaveformSelector::onDisplay()
 				line[smpl].setY((pos + val) * box_height);
 			}
 
-			theme->highlight.setFor(context);
+			curve_color.setFor(context, true);
 			draw_line_string(context, line, 1);
 
+			Color(255, 255, 255).setFor(context);
 			draw_text(context,
 					  std::to_string(pos + 1).c_str(),
 					  theme->font.c_str(),
@@ -156,6 +181,20 @@ void WaveformSelector::onDisplay()
 					  Anchor::LEFT_CENTER,
 					  5,
 					  ((pos + 0.5f) * box_height));
+
+			if (interpolated)
+			{
+				Color tag_color(255, 255, 255);
+				tag_color.alpha = 0.7f;
+				tag_color.setFor(context, true);
+				draw_text(context,
+						  "INTERP",
+						  theme->font.c_str(),
+						  box_height * 0.3,
+						  Anchor::RIGHT_CENTER,
+						  getWidth() - box_height * 0.5 - 12,
+						  ((pos + 0.5f) * box_height));
+			}
 		}
 
 		if (dragging >= 0)
@@ -347,6 +386,7 @@ void WaveformDragAndDrop::onDisplay()
 	theme->highlight.setFor(context);
 	draw_line_string(context, line, 1);
 
+	Color(255, 255, 255).setFor(context);
 	draw_text(context,
 			  std::to_string(waveform_idx + 1).c_str(),
 			  theme->font.c_str(),
