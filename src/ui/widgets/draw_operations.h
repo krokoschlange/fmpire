@@ -72,6 +72,21 @@ void draw_text(const GraphicsContext& context,
 			   const float y,
 			   const bool full_center = false);
 
+// Like draw_text, but clips drawing to the given rectangle first, so text
+// that doesn't fit is cut off instead of silently resized.
+void draw_text_clipped(const GraphicsContext& context,
+					   const char* text,
+					   const char* font,
+					   const float size,
+					   const Anchor anchor,
+					   const float x,
+					   const float y,
+					   const float clip_left,
+					   const float clip_top,
+					   const float clip_width,
+					   const float clip_height,
+					   const bool full_center = false);
+
 void get_text_rect(const GraphicsContext& context,
 				   const char* text,
 				   const char* font,
@@ -88,11 +103,12 @@ void get_text_rect(const GraphicsContext& context,
 				   float& bearing_x,
 				   float& bearing_y);
 
-float fit_text(const GraphicsContext& context,
-			   const char* text,
-			   const char* font,
-			   const float size_x,
-			   const float size_y);
+// Turns a font_role:: constant (calibrated at UI scale 1.0) into the actual
+// font size to draw at for the current UI scale.
+inline float scaled_font_size(float role_size, float ui_scale)
+{
+	return role_size * ui_scale;
+}
 
 // Strokes diagonal lines with the current source over the given box. Used to
 // mark content that is derived and can't be edited directly.

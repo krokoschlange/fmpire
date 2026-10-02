@@ -1,5 +1,7 @@
 #include "fmpire_ui.h"
 
+#include <algorithm>
+
 #include "grid_container.h"
 #include "keyboard_bar.h"
 #include "modulation_matrix.h"
@@ -34,6 +36,7 @@ FMpireUI::FMpireUI() :
 	tab_selector->add_option("FX");
 	tab_selector->add_option("WT");
 	tab_selector->set_callback(this);
+	tab_selector->set_font_role(font_role::NAV);
 	top_bar->put(tab_selector, 0.25, 0, 0.5, 1);
 
 	oscillator_page = new OscillatorPage(grid, state_manager);
@@ -138,6 +141,11 @@ bool FMpireUI::onMotion(const MotionEvent& event)
 
 void FMpireUI::onResize(const ResizeEvent& ev)
 {
+	constexpr float kDesignWidth = 1024.0f;
+	constexpr float kDesignHeight = 768.0f;
+	set_ui_scale(std::min(ev.size.getWidth() / kDesignWidth,
+						  ev.size.getHeight() / kDesignHeight));
+
 	if (grid == nullptr)
 	{
 		return;

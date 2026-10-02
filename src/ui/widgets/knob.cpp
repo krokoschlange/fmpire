@@ -8,6 +8,7 @@
 #include "Color.hpp"
 #include "double_click.h"
 #include "draw_operations.h"
+#include "fmpire_window.h"
 
 #include <algorithm>
 #include <cmath>
@@ -45,7 +46,6 @@ Knob::Knob(Widget* parentWidget) :
 	value(0.5),
 	default_value(0),
 	stored_value(0.5),
-	label_scale(0.2),
 	drag_speed(0.005),
 	dragging(false),
 	callback(nullptr),
@@ -216,12 +216,6 @@ void Knob::set_label(const std::string& text)
 	repaint();
 }
 
-void Knob::set_label_scale(const float scale)
-{
-	label_scale = scale;
-	repaint();
-}
-
 void Knob::set_tooltip(const std::string& txt,
 					   const float offset,
 					   const float mult,
@@ -335,7 +329,7 @@ void Knob::draw_mod_range(const GraphicsContext& context,
 	const float low = std::clamp(value - down, 0.0f, 1.0f);
 	const float high = std::clamp(value + up, 0.0f, 1.0f);
 
-	Color(255, 150, 40).setFor(context);
+	theme->secondary.setFor(context);
 	Arc<float> range(getWidth() / 2,
 					 getHeight() / 2,
 					 radius * 1.25f,
@@ -371,7 +365,7 @@ void Knob::onDisplay()
 												  mod_object);
 		const RouteSettings* route = mod_model->get_route(slot);
 
-		Color(255, 150, 40).setFor(context);
+		theme->secondary.setFor(context);
 		Arc<float> ring(getWidth() / 2, getHeight() / 2, radius * 1.25f, 45, 315);
 		ring.draw(context, radius * 0.05f);
 
@@ -416,13 +410,19 @@ void Knob::onDisplay()
 	}
 
 	Color(255, 255, 255).setFor(context);
-	draw_text(context,
-			  label.c_str(),
-			  theme->font.c_str(),
-			  getHeight() * label_scale,
-			  Anchor::CENTER,
-			  getWidth() / 2,
-			  getHeight() * (1.0 - label_scale * 0.5));
+	const float text_size =
+		scaled_font_size(font_role::LABEL, window->get_ui_scale());
+	draw_text_clipped(context,
+					  label.c_str(),
+					  theme->font.c_str(),
+					  text_size,
+					  Anchor::CENTER,
+					  getWidth() / 2,
+					  getHeight() - text_size * 0.5f,
+					  0,
+					  0,
+					  getWidth(),
+					  getHeight());
 }
 
 std::string Knob::create_tooltip_string()

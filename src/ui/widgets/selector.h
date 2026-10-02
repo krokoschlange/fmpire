@@ -20,8 +20,9 @@ public:
 	void clear_options();
 
 	void select(const int index, const bool emit_callback = false);
-	
-	void set_text_y_scale(const float scale);
+
+	// One of the font_role:: constants; defaults to font_role::BODY.
+	void set_font_role(const float role_size);
 
 	struct Callback
 	{
@@ -42,7 +43,7 @@ private:
 	int selected;
 	int hover;
 
-	float text_y_scale;
+	float font_role_size;
 
 	Callback* callback;
 };

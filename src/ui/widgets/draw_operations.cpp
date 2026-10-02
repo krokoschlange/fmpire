@@ -230,6 +230,29 @@ void draw_text(const GraphicsContext& context,
 	cairo_show_text(handle, text);
 }
 
+void draw_text_clipped(const GraphicsContext& context,
+					   const char* text,
+					   const char* font,
+					   const float size,
+					   const Anchor anchor,
+					   const float x,
+					   const float y,
+					   const float clip_left,
+					   const float clip_top,
+					   const float clip_width,
+					   const float clip_height,
+					   const bool full_center)
+{
+	cairo_t* const handle = ((const CairoGraphicsContext&) context).handle;
+
+	cairo_save(handle);
+	cairo_new_path(handle);
+	cairo_rectangle(handle, clip_left, clip_top, clip_width, clip_height);
+	cairo_clip(handle);
+	draw_text(context, text, font, size, anchor, x, y, full_center);
+	cairo_restore(handle);
+}
+
 void get_text_rect(const GraphicsContext& context,
 				   const char* text,
 				   const char* font,
@@ -272,29 +295,6 @@ void get_text_rect(const GraphicsContext& context,
 	height = xtents.height;
 	bearing_x = xtents.x_bearing;
 	bearing_y = xtents.y_bearing;
-}
-
-float fit_text(const GraphicsContext& context,
-			   const char* text,
-			   const char* font,
-			   const float size_x,
-			   const float size_y)
-{
-	cairo_t* const handle = ((const CairoGraphicsContext&) context).handle;
-
-	cairo_select_font_face(handle,
-						   font,
-						   CAIRO_FONT_SLANT_NORMAL,
-						   CAIRO_FONT_WEIGHT_NORMAL);
-	float font_size = size_y;
-	cairo_set_font_size(handle, font_size);
-	cairo_text_extents_t xtents;
-	cairo_text_extents(handle, text, &xtents);
-
-	font_size =
-		std::min<float>(font_size, font_size * size_x / xtents.x_advance);
-	font_size = std::min<float>(font_size, font_size * size_y / xtents.height);
-	return font_size;
 }
 
 void draw_line_string(const GraphicsContext& context,

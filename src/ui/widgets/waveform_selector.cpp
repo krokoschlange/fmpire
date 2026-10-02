@@ -2,6 +2,7 @@
 
 #include "Base.hpp"
 #include "draw_operations.h"
+#include "fmpire_window.h"
 #include "wavetable.h"
 #include "wavetable_creator.h"
 
@@ -174,26 +175,38 @@ void WaveformSelector::onDisplay()
 			draw_line_string(context, line, 1);
 
 			Color(255, 255, 255).setFor(context);
-			draw_text(context,
-					  std::to_string(pos + 1).c_str(),
-					  theme->font.c_str(),
-					  box_height * 0.5,
-					  Anchor::LEFT_CENTER,
-					  5,
-					  ((pos + 0.5f) * box_height));
+			const float index_text_size =
+				scaled_font_size(font_role::LABEL, window->get_ui_scale());
+			draw_text_clipped(context,
+							  std::to_string(pos + 1).c_str(),
+							  theme->font.c_str(),
+							  index_text_size,
+							  Anchor::LEFT_CENTER,
+							  5,
+							  ((pos + 0.5f) * box_height),
+							  0,
+							  pos * box_height,
+							  getWidth(),
+							  box_height);
 
 			if (interpolated)
 			{
 				Color tag_color(255, 255, 255);
 				tag_color.alpha = 0.7f;
 				tag_color.setFor(context, true);
-				draw_text(context,
-						  "INTERP",
-						  theme->font.c_str(),
-						  box_height * 0.3,
-						  Anchor::RIGHT_CENTER,
-						  getWidth() - box_height * 0.5 - 12,
-						  ((pos + 0.5f) * box_height));
+				const float tag_text_size =
+					scaled_font_size(font_role::CAPTION, window->get_ui_scale());
+				draw_text_clipped(context,
+								  "INTERP",
+								  theme->font.c_str(),
+								  tag_text_size,
+								  Anchor::RIGHT_CENTER,
+								  getWidth() - box_height * 0.5 - 12,
+								  ((pos + 0.5f) * box_height),
+								  0,
+								  pos * box_height,
+								  getWidth(),
+								  box_height);
 			}
 		}
 
@@ -387,13 +400,19 @@ void WaveformDragAndDrop::onDisplay()
 	draw_line_string(context, line, 1);
 
 	Color(255, 255, 255).setFor(context);
-	draw_text(context,
-			  std::to_string(waveform_idx + 1).c_str(),
-			  theme->font.c_str(),
-			  getHeight() * 0.5,
-			  Anchor::LEFT_CENTER,
-			  5,
-			  (0.5f * getHeight()));
+	const float index_text_size =
+		scaled_font_size(font_role::LABEL, window->get_ui_scale());
+	draw_text_clipped(context,
+					  std::to_string(waveform_idx + 1).c_str(),
+					  theme->font.c_str(),
+					  index_text_size,
+					  Anchor::LEFT_CENTER,
+					  5,
+					  (0.5f * getHeight()),
+					  0,
+					  0,
+					  getWidth(),
+					  getHeight());
 
 	theme->foreground.setFor(context);
 	draw_rounded_box(context,

@@ -1,6 +1,7 @@
 #include "selector.h"
 
 #include "draw_operations.h"
+#include "fmpire_window.h"
 
 namespace fmpire
 {
@@ -9,7 +10,7 @@ Selector::Selector(Widget* parent) :
 	FMpireWidget(parent),
 	selected(0),
 	hover(-1),
-	text_y_scale(0.5),
+	font_role_size(font_role::BODY),
 	callback(nullptr)
 {
 }
@@ -46,15 +47,15 @@ void Selector::select(const int index, const bool emit_callback)
 	repaint();
 }
 
-void Selector::set_text_y_scale(const float scale)
-{
-	text_y_scale = scale;
-	repaint();
-}
-
 void Selector::set_callback(Callback* cb)
 {
 	callback = cb;
+}
+
+void Selector::set_font_role(const float role_size)
+{
+	font_role_size = role_size;
+	repaint();
 }
 
 void Selector::onDisplay()
@@ -119,27 +120,22 @@ void Selector::onDisplay()
 						 line_width,
 						 corners);
 	}
-	float font_size = getHeight() * text_y_scale;
-	for (size_t opt = 0; opt < options.size(); opt++)
-	{
-		float current_size = fit_text(context,
-									  options[opt].c_str(),
-									  theme->font.c_str(),
-									  box_width,
-									  getHeight() * text_y_scale);
-		font_size = std::min(font_size, current_size);
-	}
+	const float font_size = scaled_font_size(font_role_size, window->get_ui_scale());
 	Color(255, 255, 255).setFor(context);
 	for (size_t opt = 0; opt < options.size(); opt++)
 	{
 		float x = box_width * opt + box_width * 0.5;
-		draw_text(context,
-				  options[opt].c_str(),
-				  theme->font.c_str(),
-				  font_size,
-				  Anchor::CENTER,
-				  x,
-				  getHeight() * 0.5);
+		draw_text_clipped(context,
+						  options[opt].c_str(),
+						  theme->font.c_str(),
+						  font_size,
+						  Anchor::CENTER,
+						  x,
+						  getHeight() * 0.5,
+						  box_width * opt,
+						  0,
+						  box_width,
+						  getHeight());
 	}
 
 

@@ -232,16 +232,22 @@ void PianoKeyboard::onDisplay()
 		if (semitone == 0)
 		{
 			Color(60, 60, 60).setFor(context);
-			draw_text(context,
-					  ("C"
-					   + std::to_string(octave
-										+ white_idx / WHITE_KEYS_PER_OCTAVE))
-						  .c_str(),
-					  theme->font.c_str(),
-					  std::min(white_width * 0.4f, height * 0.15f),
-					  Anchor::BOTTOM_CENTER,
-					  left + white_width / 2,
-					  height - line_width - 3);
+			draw_text_clipped(context,
+							  ("C"
+							   + std::to_string(octave
+												+ white_idx
+													  / WHITE_KEYS_PER_OCTAVE))
+								  .c_str(),
+							  theme->font.c_str(),
+							  scaled_font_size(font_role::LABEL,
+											   window->get_ui_scale()),
+							  Anchor::BOTTOM_CENTER,
+							  left + white_width / 2,
+							  height - line_width - 3,
+							  left,
+							  0,
+							  white_width,
+							  height);
 		}
 	}
 

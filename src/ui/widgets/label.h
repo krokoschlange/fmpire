@@ -13,14 +13,12 @@ public:
 	virtual ~Label() noexcept;
 
 	void set_text(std::string txt);
-	void set_text_y_scale(const float scale);
 
 protected:
 	void onDisplay() override;
 
 private:
 	std::string text;
-	float text_y_scale;
 };
 
 } // namespace fmpire

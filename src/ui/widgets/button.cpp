@@ -1,6 +1,7 @@
 #include "button.h"
 
 #include "draw_operations.h"
+#include "fmpire_window.h"
 
 namespace fmpire
 {
@@ -9,7 +10,6 @@ Button::Button(Widget* parent) :
 	state(State::NORMAL),
 	is_toggle(false),
 	text(""),
-	text_y_scale(0.5),
 	callback(nullptr),
 	is_drawing_normal_bg(false)
 {
@@ -27,12 +27,6 @@ void Button::set_toggle(const bool toggle)
 void Button::set_text(const std::string& txt)
 {
 	text = txt;
-	repaint();
-}
-
-void Button::set_text_y_scale(const float scale)
-{
-	text_y_scale = scale;
 	repaint();
 }
 
@@ -132,19 +126,18 @@ void Button::onDisplay()
 					 line_width);
 
 	Color(255, 255, 255).setFor(context);
-	float text_size = getHeight() * text_y_scale;
-	text_size = fit_text(context,
-						 text.c_str(),
-						 theme->font.c_str(),
-						 getWidth(),
-						 text_size);
-	draw_text(context,
-			  text.c_str(),
-			  theme->font.c_str(),
-			  text_size,
-			  Anchor::CENTER,
-			  getWidth() / 2,
-			  getHeight() / 2);
+	const float text_size = scaled_font_size(font_role::BODY, window->get_ui_scale());
+	draw_text_clipped(context,
+					  text.c_str(),
+					  theme->font.c_str(),
+					  text_size,
+					  Anchor::CENTER,
+					  getWidth() / 2,
+					  getHeight() / 2,
+					  0,
+					  0,
+					  getWidth(),
+					  getHeight());
 }
 
 bool Button::onMouse(const MouseEvent& event)

@@ -3,6 +3,7 @@
 #include "button.h"
 #include "defines.h"
 #include "draw_operations.h"
+#include "fmpire_window.h"
 #include "Geometry.hpp"
 #include "harmonic_editor.h"
 #include "ref_counted.h"
@@ -235,20 +236,21 @@ void WaveformEditor::onDisplay()
 			+ "): follows its neighbouring waveforms, not editable";
 		const float text_width =
 			std::max(0.0f, getWidth() - button_width() - 16);
-		const float text_size = fit_text(context,
-										 text.c_str(),
-										 theme->font.c_str(),
-										 text_width,
-										 bar_height * 0.5f);
+		const float text_size =
+			scaled_font_size(font_role::HEADING, window->get_ui_scale());
 
 		Color(255, 255, 255).setFor(context);
-		draw_text(context,
-				  text.c_str(),
-				  theme->font.c_str(),
-				  text_size,
-				  Anchor::LEFT_CENTER,
-				  8,
-				  bar_height * 0.5f);
+		draw_text_clipped(context,
+						  text.c_str(),
+						  theme->font.c_str(),
+						  text_size,
+						  Anchor::LEFT_CENTER,
+						  8,
+						  bar_height * 0.5f,
+						  0,
+						  0,
+						  text_width + 8,
+						  bar_height);
 	}
 
 	theme->foreground.setFor(context);

@@ -19,6 +19,10 @@ public:
 
 	FMpireWidget* get_focus() const { return focus; }
 
+	void set_ui_scale(float scale) { ui_scale = scale; }
+
+	float get_ui_scale() const { return ui_scale; }
+
 protected:
 	void reinit_tooltip();
 
@@ -27,6 +31,8 @@ private:
 	FMpireWidget* focus;
 
 	TopLevelWidget* top_level_widget;
+
+	float ui_scale = 1.0f;
 };
 
 } // namespace fmpire

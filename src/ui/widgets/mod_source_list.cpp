@@ -2,6 +2,7 @@
 
 #include "Color.hpp"
 #include "draw_operations.h"
+#include "fmpire_window.h"
 
 #include <algorithm>
 #include <set>
@@ -59,9 +60,9 @@ bool is_fixed_cc(const uint16_t controller)
 	return false;
 }
 
-void set_armed_color(const GraphicsContext& context)
+void set_armed_color(const GraphicsContext& context, Theme* theme)
 {
-	Color(255, 150, 40).setFor(context);
+	theme->secondary.setFor(context);
 }
 } // namespace
 
@@ -306,7 +307,6 @@ void ModSourceList::draw_tile(const GraphicsContext& context,
 {
 	const bool is_armed =
 		armed.type != SourceType::NONE && armed == tiles[tile].source;
-	const bool is_macro = tile < FMPIRE_MACRO_COUNT;
 
 	const Rectangle<double> box = tile_rect(tile);
 	theme->background.setFor(context);
@@ -322,7 +322,7 @@ void ModSourceList::draw_tile(const GraphicsContext& context,
 	const Rectangle<double> toggle = tile_toggle_rect(tile);
 	if (is_armed)
 	{
-		set_armed_color(context);
+		set_armed_color(context, theme);
 		fill_rounded_box(context,
 						 toggle.getX(),
 						 toggle.getY(),
@@ -333,13 +333,19 @@ void ModSourceList::draw_tile(const GraphicsContext& context,
 	}
 
 	Color(255, 255, 255).setFor(context);
-	draw_text(context,
-			  tiles[tile].label.c_str(),
-			  theme->font.c_str(),
-			  (is_macro ? macro_caption_height : midi_tile_height) * 0.6f,
-			  Anchor::CENTER,
-			  toggle.getX() + toggle.getWidth() * 0.5f,
-			  toggle.getY() + toggle.getHeight() * 0.5f);
+	const float caption_size =
+		scaled_font_size(font_role::CAPTION, window->get_ui_scale());
+	draw_text_clipped(context,
+					  tiles[tile].label.c_str(),
+					  theme->font.c_str(),
+					  caption_size,
+					  Anchor::CENTER,
+					  toggle.getX() + toggle.getWidth() * 0.5f,
+					  toggle.getY() + toggle.getHeight() * 0.5f,
+					  toggle.getX(),
+					  toggle.getY(),
+					  toggle.getWidth(),
+					  toggle.getHeight());
 }
 
 void ModSourceList::draw_row(const GraphicsContext& context,
@@ -410,20 +416,26 @@ void ModSourceList::draw_row(const GraphicsContext& context,
 	}
 
 	Color(255, 255, 255).setFor(context);
-	draw_text(context,
-			  row.label.c_str(),
-			  theme->font.c_str(),
-			  row_height * 0.36f,
-			  Anchor::LEFT_CENTER,
-			  6,
-			  top + row_height * 0.5f);
+	const float row_label_size =
+		scaled_font_size(font_role::LABEL, window->get_ui_scale());
+	draw_text_clipped(context,
+					  row.label.c_str(),
+					  theme->font.c_str(),
+					  row_label_size,
+					  Anchor::LEFT_CENTER,
+					  6,
+					  top + row_height * 0.5f,
+					  0,
+					  top,
+					  toggle_left(),
+					  row_height);
 
 	// program toggle
 	const float toggle_top = top + row_height * 0.2f;
 	const float toggle_height = row_height * 0.6f;
 	if (is_armed)
 	{
-		set_armed_color(context);
+		set_armed_color(context, theme);
 		fill_rounded_box(context,
 						 toggle_left(),
 						 toggle_top,
@@ -444,13 +456,19 @@ void ModSourceList::draw_row(const GraphicsContext& context,
 						 1);
 	}
 	Color(255, 255, 255).setFor(context);
-	draw_text(context,
-			  "M",
-			  theme->font.c_str(),
-			  toggle_height * 0.6f,
-			  Anchor::CENTER,
-			  toggle_left() + toggle_width * 0.5f,
-			  toggle_top + toggle_height * 0.5f);
+	const float toggle_text_size =
+		scaled_font_size(font_role::CAPTION, window->get_ui_scale());
+	draw_text_clipped(context,
+					  "M",
+					  theme->font.c_str(),
+					  toggle_text_size,
+					  Anchor::CENTER,
+					  toggle_left() + toggle_width * 0.5f,
+					  toggle_top + toggle_height * 0.5f,
+					  toggle_left(),
+					  toggle_top,
+					  toggle_width,
+					  toggle_height);
 }
 
 void ModSourceList::onDisplay()

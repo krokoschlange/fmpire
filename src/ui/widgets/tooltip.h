@@ -18,7 +18,6 @@ public:
 				 const float y,
 				 const bool pin = false);
 	void set_text(const std::string& txt);
-	void set_text_size(const float size);
 
 	void unpin();
 
@@ -31,7 +30,6 @@ protected:
 
 private:
 	std::string text;
-	float text_size;
 
 	bool requested;
 	bool pinned;

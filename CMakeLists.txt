@@ -4,6 +4,30 @@ project(fmpire)
 
 set(CMAKE_CXX_STANDARD 23)
 
+# apply local patches to the DPF submodule (skipped if already applied)
+find_package(Git REQUIRED)
+file(GLOB DPF_PATCHES ${CMAKE_CURRENT_SOURCE_DIR}/patches/dpf-*.patch)
+foreach(patch ${DPF_PATCHES})
+	execute_process(
+		COMMAND ${GIT_EXECUTABLE} apply --reverse --check ${patch}
+		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/DPF
+		RESULT_VARIABLE patch_applied
+		OUTPUT_QUIET ERROR_QUIET
+	)
+	if(NOT patch_applied EQUAL 0)
+		message(STATUS "Applying ${patch}")
+		execute_process(
+			COMMAND ${GIT_EXECUTABLE} apply ${patch}
+			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/DPF
+			RESULT_VARIABLE patch_result
+		)
+		if(NOT patch_result EQUAL 0)
+			message(FATAL_ERROR "Failed to apply ${patch}")
+		endif()
+	endif()
+	set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${patch})
+endforeach()
+
 add_subdirectory(DPF)
 
 dpf_add_plugin(fmpire

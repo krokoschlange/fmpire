@@ -1,6 +1,7 @@
 #include "tooltip.h"
 
 #include "draw_operations.h"
+#include "fmpire_window.h"
 
 #include <chrono>
 #include <iostream>
@@ -10,7 +11,6 @@ namespace fmpire
 
 Tooltip::Tooltip(Widget* parent) :
 	FMpireWidget(parent),
-	text_size(0.03),
 	requested(false),
 	pinned(false),
 	last_mouse_pos(0, 0),
@@ -45,12 +45,6 @@ void Tooltip::set_text(const std::string& txt)
 	repaint();
 }
 
-void Tooltip::set_text_size(const float size)
-{
-	text_size = size;
-	repaint();
-}
-
 void Tooltip::unpin()
 {
 	pinned = false;
@@ -77,7 +71,7 @@ void Tooltip::onDisplay()
 
 	Widget* parent = getParentWidget();
 
-	float font_size = parent->getHeight() * text_size;
+	float font_size = scaled_font_size(font_role::CAPTION, window->get_ui_scale());
 	float width, height;
 	get_text_rect(context,
 				  text.c_str(),

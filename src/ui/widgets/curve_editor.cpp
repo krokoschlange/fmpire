@@ -3,6 +3,7 @@
 #include "arc.h"
 #include "double_click.h"
 #include "draw_operations.h"
+#include "fmpire_window.h"
 
 #include <algorithm>
 #include <cmath>
@@ -211,13 +212,19 @@ void CurveEditor::onDisplay()
 	if (!model.has_modulator(modulator_id))
 	{
 		Color(255, 255, 255).setFor(context);
-		draw_text(context,
-				  "Add an envelope or LFO",
-				  theme->font.c_str(),
-				  getHeight() * 0.06f,
-				  Anchor::CENTER,
-				  getWidth() * 0.5f,
-				  getHeight() * 0.5f);
+		const float text_size =
+			scaled_font_size(font_role::LABEL, window->get_ui_scale());
+		draw_text_clipped(context,
+						  "Add an envelope or LFO",
+						  theme->font.c_str(),
+						  text_size,
+						  Anchor::CENTER,
+						  getWidth() * 0.5f,
+						  getHeight() * 0.5f,
+						  0,
+						  0,
+						  getWidth(),
+						  getHeight());
 	}
 	else
 	{
@@ -247,7 +254,7 @@ void CurveEditor::onDisplay()
 		if (playhead >= 0.0f)
 		{
 			const float px = to_pixels(std::min(playhead, 1.0f), 0).getX();
-			Color(255, 150, 40).setFor(context);
+			theme->secondary.setFor(context);
 			Line<float> playhead_line(px, padding(), px, getHeight() - padding());
 			playhead_line.draw(context, theme->line_thin);
 		}

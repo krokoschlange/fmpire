@@ -16,7 +16,6 @@ public:
 
 	void set_toggle(const bool toggle);
 	void set_text(const std::string& txt);
-	void set_text_y_scale(const float scale);
 	void set_enabled(const bool enabled);
 	void set_pressed(const bool pressed);
 
@@ -50,7 +49,6 @@ protected:
 	State state;
 	bool is_toggle;
 	std::string text;
-	float text_y_scale;
 	bool is_drawing_normal_bg;
 	Callback* callback;
 };

@@ -131,9 +131,8 @@ void IntEditor::update_left_label_metrics(const GraphicsContext& context)
 	const float padding = getHeight() * LEFT_LABEL_PADDING;
 	const float max_label_width =
 		getWidth() * (fixed_width ? label_proportion : 0.5f);
-	const float max_text_width = std::max(max_label_width - 2 * padding, 0.0f);
 
-	left_label_size = getHeight() * 0.4f;
+	left_label_size = scaled_font_size(font_role::LABEL, window->get_ui_scale());
 	float text_width = 0, text_height = 0;
 	if (!label.empty())
 	{
@@ -145,13 +144,11 @@ void IntEditor::update_left_label_metrics(const GraphicsContext& context)
 					  text_height);
 	}
 
-	// shrink the label instead of letting it eat into the number box
-	if (text_width > max_text_width && text_width > 0)
-	{
-		left_label_size *= max_text_width / text_width;
-		text_width = max_text_width;
-	}
-	left_label_width = fixed_width ? max_label_width : text_width + 2 * padding;
+	// don't let the label column eat into the number box; a label that's too
+	// wide for max_label_width gets clipped when drawn instead of shrunk
+	left_label_width = fixed_width
+						  ? max_label_width
+						  : std::min(text_width + 2 * padding, max_label_width);
 }
 
 void IntEditor::onDisplay()
@@ -245,10 +242,11 @@ void IntEditor::onDisplay()
 	theme->foreground.setFor(context);
 	fill_zone(press_state);
 
-	float text_size = box_height * 0.5;
 	float text_center_x = box_left + box_width / 2;
 
 	const std::string text = editing ? edit_text : std::to_string(value);
+
+	float text_size = scaled_font_size(font_role::BODY, window->get_ui_scale());
 
 	if (editing)
 	{
@@ -287,52 +285,74 @@ void IntEditor::onDisplay()
 	}
 
 	Color(255, 255, 255).setFor(context);
-	draw_text(context,
-			  text.c_str(),
-			  theme->font.c_str(),
-			  text_size,
-			  Anchor::CENTER,
-			  text_center_x,
-			  box_center,
-			  true);
-	draw_text(context,
-			  "-",
-			  theme->font.c_str(),
-			  text_size,
-			  Anchor::CENTER,
-			  box_left + box_width * 0.1,
-			  box_center,
-			  true);
-	draw_text(context,
-			  "+",
-			  theme->font.c_str(),
-			  text_size,
-			  Anchor::CENTER,
-			  box_left + box_width * 0.9,
-			  box_center,
-			  true);
+	draw_text_clipped(context,
+					  text.c_str(),
+					  theme->font.c_str(),
+					  text_size,
+					  Anchor::CENTER,
+					  text_center_x,
+					  box_center,
+					  box_left + zone_width,
+					  box_top,
+					  box_width - 2 * zone_width,
+					  box_height,
+					  true);
+	draw_text_clipped(context,
+					  "-",
+					  theme->font.c_str(),
+					  text_size,
+					  Anchor::CENTER,
+					  box_left + box_width * 0.1,
+					  box_center,
+					  box_left,
+					  box_top,
+					  zone_width,
+					  box_height,
+					  true);
+	draw_text_clipped(context,
+					  "+",
+					  theme->font.c_str(),
+					  text_size,
+					  Anchor::CENTER,
+					  box_left + box_width * 0.9,
+					  box_center,
+					  box_left + box_width - zone_width,
+					  box_top,
+					  zone_width,
+					  box_height,
+					  true);
 
 	if (label_left)
 	{
-		draw_text(context,
-				  label.c_str(),
-				  theme->font.c_str(),
-				  left_label_size,
-				  Anchor::LEFT_CENTER,
-				  getHeight() * LEFT_LABEL_PADDING,
-				  box_center,
-				  true);
+		draw_text_clipped(context,
+						  label.c_str(),
+						  theme->font.c_str(),
+						  left_label_size,
+						  Anchor::LEFT_CENTER,
+						  getHeight() * LEFT_LABEL_PADDING,
+						  box_center,
+						  0,
+						  0,
+						  left_label_width,
+						  getHeight(),
+						  true);
 	}
 	else
 	{
-		draw_text(context,
-				  label.c_str(),
-				  theme->font.c_str(),
-				  getHeight() * 0.2,
-				  Anchor::CENTER,
-				  getWidth() * 0.5,
-				  getHeight() * 0.9,
-				  true);
+		const float below_label_size =
+			scaled_font_size(font_role::LABEL, window->get_ui_scale());
+		draw_text_clipped(context,
+						  label.c_str(),
+						  theme->font.c_str(),
+						  below_label_size,
+						  Anchor::CENTER,
+						  getWidth() * 0.5,
+						  getHeight() * 0.9,
+						  0,
+						  0,
+						  getWidth(),
+						  getHeight(),
+						  true);
 	}
 }
 

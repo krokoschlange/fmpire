@@ -27,7 +27,6 @@ public:
 	void set_default_value(const float val);
 
 	void set_label(const std::string& text);
-	void set_label_scale(const float scale);
 	void set_tooltip(const std::string& txt,
 					 const float offset = 0,
 					 const float mult = 1,
@@ -55,7 +54,6 @@ private:
 	float stored_value;
 
 	std::string label;
-	float label_scale;
 	std::string tooltip;
 	float tooltip_value_offset;
 	float tooltip_value_mult;

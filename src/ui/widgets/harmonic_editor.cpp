@@ -2,6 +2,7 @@
 #include "Base.hpp"
 #include "double_click.h"
 #include "draw_operations.h"
+#include "fmpire_window.h"
 #include "waveform_part.h"
 
 namespace fmpire
@@ -78,13 +79,20 @@ void HarmonicEditor::onDisplay()
 		if (i % 8 == 0)
 		{
 			Color(255, 255, 255).setFor(context);
-			draw_text(context,
-					  std::to_string(i).c_str(),
-					  theme->font.c_str(),
-					  box_width * 0.5,
-					  Anchor::CENTER,
-					  x + box_width * 0.5,
-					  amp_h * 0.1);
+			const std::string index_text = std::to_string(i);
+			const float text_size =
+				scaled_font_size(font_role::LABEL, window->get_ui_scale());
+			draw_text_clipped(context,
+							  index_text.c_str(),
+							  theme->font.c_str(),
+							  text_size,
+							  Anchor::CENTER,
+							  x + box_width * 0.5,
+							  amp_h * 0.1,
+							  x,
+							  0,
+							  box_width,
+							  h);
 		}
 	}
 }
